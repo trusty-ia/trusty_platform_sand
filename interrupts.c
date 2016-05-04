@@ -21,7 +21,9 @@
 #include <platform/interrupts.h>
 #include <arch/ops.h>
 #include <arch/x86.h>
+#ifdef ENABLE_FPU
 #include <arch/fpu.h>
+#endif
 #include <kernel/spinlock.h>
 #include <platform/sand.h>
 #include <lib/sm.h>
