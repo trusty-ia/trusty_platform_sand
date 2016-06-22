@@ -26,13 +26,12 @@
 #include <kernel/vm.h>
 #include "mem_map.h"
 
-extern multiboot_info_t *_multiboot_info;
 extern int _end_of_ram;
 
 #ifdef WITH_KERNEL_VM
 extern int _end;
-static uintptr_t _heap_start = (uintptr_t) & _end;
-static uintptr_t _heap_end = (uintptr_t) & _end_of_ram;
+static uintptr_t _heap_start = (uintptr_t) &_end;
+static uintptr_t _heap_end = (uintptr_t) (&_end + 0xA00000);
 #else
 extern uintptr_t _heap_end;
 #endif
@@ -159,54 +158,8 @@ void heap_arena_init()
 }
 #endif
 
-void platform_init_multiboot_info(void)
-{
-    unsigned int i;
-
-    if (_multiboot_info) {
-        if (_multiboot_info->flags & MB_INFO_MEM_SIZE) {
-            /* LK uses 1:1 mapping */
-            _heap_end = _multiboot_info->mem_upper * 1024 + TRUSTY_START_ADDR;
-            memory_map_t *mmap =
-                (memory_map_t *) (_multiboot_info->mmap_addr - 4);
-        }
-
-        if (_multiboot_info->flags & MB_INFO_MMAP) {
-            memory_map_t *mmap =
-                (memory_map_t *) (_multiboot_info->mmap_addr - 4);
-
-            for (i = 0;
-                    i <
-                    _multiboot_info->mmap_length /
-                    sizeof(memory_map_t); i++) {
-
-                if (mmap[i].type == MB_MMAP_TYPE_AVAILABLE
-                        && mmap[i].base_addr_low >= _heap_end) {
-                    _heap_end =
-                        mmap[i].base_addr_low +
-                        mmap[i].length_low;
-                } else if (mmap[i].type !=
-                        MB_MMAP_TYPE_AVAILABLE
-                        && mmap[i].base_addr_low >=
-                        _heap_end) {
-                    /*
-                     * break on first memory hole above default heap end for now.
-                     * later we can add facilities for adding free chunks to the
-                     * heap for each segregated memory region.
-                     */
-                    break;
-                }
-            }
-        }
-    }
-}
-
 void platform_early_init(void)
 {
-
-    /* update the heap end so we can take advantage of more ram */
-    platform_init_multiboot_info();
-
     /* initialize the interrupt controller */
     platform_init_interrupts();
 

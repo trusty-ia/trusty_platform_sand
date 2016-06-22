@@ -24,50 +24,72 @@
 #include "mem_map.h"
 
 ENTRY(_start)
-SECTIONS
+    SECTIONS
 {
- .text TRUSTY_ENTRY_ADDR : {
-  __code_start = .;
-  KEEP(*(.text.boot))
-  *(.text* .sram.text)
-  *(.gnu.linkonce.t.*)
-  __code_end = .;
- } =0x9090
- .rodata : ALIGN(4096) {
-  __rodata_start = .;
-  *(.rodata*)
-  *(.gnu.linkonce.r.*)
-INCLUDE "arch/shared_rodata_sections.ld"
-  . = ALIGN(8);
-  __rodata_end = .;
- }
- .data : ALIGN(4096) {
-  __data_start = .;
-  *(.data .data.* .gnu.linkonce.d.*)
-INCLUDE "arch/shared_data_sections.ld"
- }
- .stack : ALIGN(4096){
-   __tss_start = .;
-   __tss_end = . + (4096);
-  }
- __ctor_list = .;
- .ctors : { KEEP(*(.ctors)) }
- __ctor_end = .;
- __dtor_list = .;
- .dtors : { KEEP(*(.dtors)) }
- __dtor_end = .;
- .stab : { *(.stab) }
- .stabst : { *(.stabstr) }
- __data_end = .;
- .bss : ALIGN(4096) {
-  __bss_start = .;
-  *(.bss*)
-  *(.gnu.linkonce.b.*)
-  *(COMMON)
-  . = ALIGN(8);
-  __bss_end = .;
- }
- _end = .;
- _end_of_ram = . + (4*1024*1024);
- /DISCARD/ : { *(.comment .note .eh_frame) }
+    .text TRUSTY_ENTRY_ADDR : {
+        __code_start = .;
+        KEEP(*(.text.boot))
+        *(.text* .sram.text)
+        *(.gnu.linkonce.t.*)
+        __code_end = .;
+    } =0x9090
+    .rela.dyn : {
+        *(.rela.init)
+        *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+        *(.rela.fini)
+        *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+        *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+        *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+        *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+        *(.rela.ctors)
+        *(.rela.dtors)
+        *(.rela.got)
+        *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+        *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+        *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+        *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+        *(.rela.ifunc)
+    }
+    .rela.plt : {
+        *(.rela.plt)
+        *(.rela.iplt)
+    }
+    .rodata : ALIGN(4096) {
+        __rodata_start = .;
+        *(.rodata*)
+        *(.gnu.linkonce.r.*)
+        INCLUDE "arch/shared_rodata_sections.ld"
+        . = ALIGN(8);
+        __rodata_end = .;
+    }
+    .data : ALIGN(4096) {
+        __data_start = .;
+        *(.data .data.* .gnu.linkonce.d.*)
+        INCLUDE "arch/shared_data_sections.ld"
+    }
+    .stack : ALIGN(4096){
+        __tss_start = .;
+        __tss_end = . + (4096);
+    }
+    __ctor_list = .;
+    .ctors : { KEEP(*(.ctors)) }
+    __ctor_end = .;
+    __dtor_list = .;
+    .dtors : { KEEP(*(.dtors)) }
+    __dtor_end = .;
+    .stab : { *(.stab) }
+    .stabst : { *(.stabstr) }
+    __data_end = .;
+    .bss : ALIGN(4096) {
+        __bss_start = .;
+        *(.bss*)
+        *(.gnu.linkonce.b.*)
+        *(COMMON)
+        . = ALIGN(8);
+        __bss_end = .;
+    }
+    . = ALIGN(4096);
+    _end = .;
+    _end_of_ram = . + (4*1024*1024);
+    /DISCARD/ : { *(.comment .note .eh_frame) }
 }

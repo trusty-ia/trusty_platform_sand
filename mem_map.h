@@ -27,17 +27,12 @@
 
 #define TARGET_MAX_MEM_SIZE 0x80000000
 
-/* Value inherits RUNTIME_MEM_BASE from env. If not set, local value is used */
-#ifndef RT_MEM_BASE
-#define RT_MEM_BASE         0x12C00000
-#endif
-
 /* LK code entry offset to the LK memory start */
 /* Must be larger than 12K and less than SG_RUNTIME_SIZE */
 /* The memory is reserved for GDT, stack and MBI with 1 page each */
 #define TRUSTY_ENTRY_OFFSET 0x3000
 
 
-#define TRUSTY_START_ADDR   (RT_MEM_BASE + STARTAP_IMG_SIZE)
+#define TRUSTY_START_ADDR   STARTAP_IMG_SIZE
 #define TRUSTY_ENTRY_ADDR   (TRUSTY_START_ADDR + TRUSTY_ENTRY_OFFSET)
 #define TRUSTY_SIZE         SG_RUNTIME_SIZE
