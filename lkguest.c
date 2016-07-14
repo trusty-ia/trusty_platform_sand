@@ -15,6 +15,7 @@
  *******************************************************************************/
 #include <sys/types.h>
 #include <platform/lkguest.h>
+#include <string.h>
 
 #define TRUSTY_VMCALL_PUTS 0x74727502 // "tru" is 0x747275
 void rm_write(const char *buf)
@@ -28,4 +29,23 @@ void lkguest_teewrite(struct conbuff* buf)
         rm_write(buf->msg);
         buf->len = 0;
     }
+}
+
+extern struct conbuff teecons_buff;
+
+void disable_tee_buffer(print_callback_t *cb)
+{
+	struct conbuff *tee_buf = &teecons_buff;
+
+	if (tee_buf->len != 0) {
+		/* print to any registered loggers */
+		if (cb->print)
+			cb->print(cb, tee_buf->msg, tee_buf->len);
+
+		/* already regiester print_cb, no need to print log to buffer
+		* now, so set the status as INVALID */
+		tee_buf->status = TEE_DBG_BUFF_INVALID;
+		tee_buf->len = 0;
+		memset(tee_buf->msg, 0, TEE_DBG_BUFFERSIZE);
+	}
 }

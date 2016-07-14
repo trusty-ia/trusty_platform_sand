@@ -16,11 +16,14 @@
 #ifndef __PLATFORM_LKGUEST_H
 #define __PLATFORM_LKGUEST_H
 
-#define TEE_TO_RM                      0x20000
-#define TEE_DBG_BUFFERSIZE             80
-#define TEEWR_RM_DBG_MESG              (TEE_TO_RM)
-#define TEE_MASK32                     0xFFFFFFFF
-#define TEE_MASK16                     0xFFFF
+#include <debug.h>
+
+#define TEE_DBG_BUFFERSIZE             4096
+
+typedef enum {
+    TEE_DBG_BUFF_VALID,
+    TEE_DBG_BUFF_INVALID
+} tee_dbg_buf_status;
 
 struct conbuff {
     unsigned int cmd;
@@ -29,8 +32,7 @@ struct conbuff {
     int len;    /* len > 0 means pending message */
 };
 
-struct conbuff teecons_buff;
-
 void lkguest_teewrite(struct conbuff* buf);
+void disable_tee_buffer(print_callback_t *cb);
 
 #endif
