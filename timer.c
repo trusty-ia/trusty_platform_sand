@@ -76,7 +76,9 @@ status_t platform_set_periodic_timer(platform_timer_callback callback,
     timer_delta_time = interval;
 
     /* vmcall to set period timer with interval (in ms) */
+#if 0/*when using proxied timer disable periodic timer*/
     make_timer_vmcall(TIMER_MODE_PERIOD, interval);
+#endif
 }
 #endif
 
