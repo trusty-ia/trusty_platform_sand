@@ -16,7 +16,9 @@
 #ifndef __SAND_H
 #define __SAND_H
 
-/* NOTE: keep arch/x86/crt0.S in sync with these definitions */
+#include <stdint.h>
+
+/* NOTE: keep arch/x86/crt0.S or crt0_64.S in sync with these definitions */
 
 /* interrupts */
 #define INT_VECTORS 0xFF
@@ -37,6 +39,29 @@
 #define INT_STACK_FAULT     0x0c
 #define INT_GP_FAULT        0x0d
 #define INT_PAGE_FAULT      0x0e
+
+#define KILOBYTE    *1024
+#define KILOBYTES   KILOBYTE
+#define MEGABYTE    *1024 KILOBYTES
+#define MEGABYTES   MEGABYTE
+#define GIGABYTE    *1024 MEGABYTES
+#define GIGABYTES   GIGABYTE
+
+
+/* Please keep align with definition in iKGT trusty_guest.h*/
+typedef struct _trusty_startup_info{
+    /* Used to double check structures match */
+    uint32_t size_of_this_struct;
+
+    /* Heap size in MB asigned to LK */
+    uint32_t heap_size_in_mb;
+
+    /* Used to calibrate TSC in LK */
+    uint64_t calibrate_tsc_per_sec;
+
+    /* Used by keymaster */
+    uint64_t trusty_mem_base;
+}trusty_startup_info_t;
 
 void platform_init_interrupts(void);
 void platform_init_timer(void);

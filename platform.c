@@ -31,7 +31,7 @@ extern int _end_of_ram;
 #ifdef WITH_KERNEL_VM
 extern int _end;
 static uintptr_t _heap_start = (uintptr_t) &_end;
-static uintptr_t _heap_end = (uintptr_t) (&_end + 0xA00000);
+static uintptr_t _heap_end = (uintptr_t) &_end;
 #else
 extern uintptr_t _heap_end;
 #endif
@@ -68,6 +68,30 @@ struct mmu_initial_mapping mmu_initial_mappings[] = {
     {0}
 };
 #endif
+
+extern trusty_startup_info_t *info_addr;
+trusty_startup_info_t trusty_startup_info;
+
+void platform_handle_parameter(void)
+{
+    if(sizeof(trusty_startup_info_t) !=
+        ((trusty_startup_info_t *)info_addr)->size_of_this_struct)
+    {
+        /* If mismatch, set all parameters to be negative */
+        trusty_startup_info.heap_size_in_mb       = -1;
+        trusty_startup_info.calibrate_tsc_per_sec = -1;
+        trusty_startup_info.trusty_mem_base       = -1;
+        dprintf(CRITICAL, "\nTrusty startup structure mismatch!\n");
+        return;
+    }
+
+    memcpy(&trusty_startup_info,
+            info_addr,
+            sizeof(trusty_startup_info_t));
+
+    _heap_end = (uintptr_t)
+        (&_end + trusty_startup_info.heap_size_in_mb MEGABYTES);
+}
 
 void platform_init_mmu_mappings(void)
 {
@@ -160,6 +184,9 @@ void heap_arena_init()
 
 void platform_early_init(void)
 {
+    /* Handle parameters passed from iKGT */
+    platform_handle_parameter();
+
     /* initialize the interrupt controller */
     platform_init_interrupts();
 
