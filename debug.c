@@ -33,7 +33,7 @@ struct conbuff teecons_buff = {
 
 void tc_flush(void)
 {
-#ifdef DEBUG
+#if LK_DEBUGLEVEL > 1
     lkguest_teewrite(&teecons_buff);
 
     memset(teecons_buff.msg, 0, TEE_DBG_BUFFERSIZE);
