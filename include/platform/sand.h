@@ -63,8 +63,11 @@ typedef struct _trusty_startup_info{
     uint64_t trusty_mem_base;
 }trusty_startup_info_t;
 
+extern trusty_startup_info_t* g_trusty_startup_info;
+
 void platform_init_interrupts(void);
 void platform_init_timer(void);
 void platform_init_uart(void);
+void clear_sensitive_data(void);
 
 #endif

@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <kernel/vm.h>
 #include "mem_map.h"
+#include <lib/trusty/trusty_device_info.h>
 
 extern int _end_of_ram;
 
@@ -68,30 +69,6 @@ struct mmu_initial_mapping mmu_initial_mappings[] = {
     {0}
 };
 #endif
-
-extern trusty_startup_info_t *info_addr;
-trusty_startup_info_t trusty_startup_info;
-
-void platform_handle_parameter(void)
-{
-    if(sizeof(trusty_startup_info_t) !=
-        ((trusty_startup_info_t *)info_addr)->size_of_this_struct)
-    {
-        /* If mismatch, set all parameters to be negative */
-        trusty_startup_info.heap_size_in_mb       = -1;
-        trusty_startup_info.calibrate_tsc_per_sec = -1;
-        trusty_startup_info.trusty_mem_base       = -1;
-        dprintf(CRITICAL, "\nTrusty startup structure mismatch!\n");
-        return;
-    }
-
-    memcpy(&trusty_startup_info,
-            info_addr,
-            sizeof(trusty_startup_info_t));
-
-    _heap_end = (uintptr_t)
-        (&_end + trusty_startup_info.heap_size_in_mb MEGABYTES);
-}
 
 void platform_init_mmu_mappings(void)
 {
@@ -182,16 +159,51 @@ void heap_arena_init()
 }
 #endif
 
+void clear_sensitive_data(void)
+{
+    trusty_device_info_t *   dev_info = NULL;
+
+    if(g_trusty_startup_info && g_trusty_startup_info->size_of_this_struct > 0) {
+        dev_info = (trusty_device_info_t *)g_trusty_startup_info->trusty_mem_base;
+        /* clear the trusty_device_info_t */
+        if(dev_info && dev_info->size > 0)
+            memset(dev_info, 0, dev_info->size);
+
+        /* clear the g_trusty_startup_info */
+        memset(g_trusty_startup_info, 0, g_trusty_startup_info->size_of_this_struct);
+        g_trusty_startup_info = NULL;
+    }
+}
+
+/*
+* TODO: need to enhance the panic handler
+* currently, if we got panic in boot stage, the behavior
+* is not expect, it will failed with SMC call since Android
+* not started yet.
+*/
+void platform_heap_init(void)
+{
+    if(!g_trusty_startup_info)
+        panic("g_trusty_startup_info is NULL!\n");
+
+    if(g_trusty_startup_info->size_of_this_struct != sizeof(trusty_startup_info_t))
+        panic("trusty startup structure mismatch!\n");
+
+    /* update the heap with the real size passed from vmm */
+    _heap_end = (uintptr_t)
+        (&_end + g_trusty_startup_info->heap_size_in_mb MEGABYTES);
+}
+
 void platform_early_init(void)
 {
-    /* Handle parameters passed from iKGT */
-    platform_handle_parameter();
-
     /* initialize the interrupt controller */
     platform_init_interrupts();
 
     /* initialize the timer */
     platform_init_timer();
+
+    /* initialize the heap */
+    platform_heap_init();
 
 #ifdef WITH_KERNEL_VM
     heap_arena_init();
