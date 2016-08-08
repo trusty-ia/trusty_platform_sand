@@ -52,6 +52,9 @@ void tee_putc(int c)
 
     p->msg[p->len++] = c;
 
+    if(c == '\r' || c == '\n')
+        tc_flush();
+
     /* the dbg buffer is full, don't write anymore, fill with string:
      * "buffer is overflow!" at the end to mark the buffer is full.
      */
