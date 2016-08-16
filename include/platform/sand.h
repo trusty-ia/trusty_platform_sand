@@ -57,7 +57,7 @@ typedef struct _trusty_startup_info{
     uint32_t heap_size_in_mb;
 
     /* Used to calibrate TSC in LK */
-    uint64_t calibrate_tsc_per_sec;
+    uint64_t calibrate_tsc_per_ms;
 
     /* Used by keymaster */
     uint64_t trusty_mem_base;
