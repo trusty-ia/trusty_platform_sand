@@ -191,7 +191,7 @@ void platform_heap_init(void)
 
     /* update the heap with the real size passed from vmm */
     _heap_end = (uintptr_t)
-        (&_end + g_trusty_startup_info->heap_size_in_mb MEGABYTES);
+        ((uintptr_t)(&_end) + g_trusty_startup_info->heap_size_in_mb MEGABYTES);
 }
 
 void platform_early_init(void)
