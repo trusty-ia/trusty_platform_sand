@@ -28,6 +28,7 @@
 #include <lib/trusty/trusty_device_info.h>
 
 extern int _end_of_ram;
+extern int _start;
 
 #ifdef WITH_KERNEL_VM
 extern int _end;
@@ -55,9 +56,9 @@ map_addr_t g_CR3 = 0;
 
 #ifdef WITH_KERNEL_VM
 struct mmu_initial_mapping mmu_initial_mappings[] = {
-    {.phys = TRUSTY_START_ADDR,
-        .virt = TRUSTY_START_ADDR,
-        .size = TARGET_MAX_MEM_SIZE - TRUSTY_START_ADDR,
+    {.phys = TRUSTY_ENTRY_OFFSET,
+        .virt = TRUSTY_ENTRY_OFFSET,
+        .size = TARGET_MAX_MEM_SIZE - TRUSTY_ENTRY_OFFSET,
         .flags = 0,
         .name = "memory"},
     /* 1 GB of memory */
@@ -183,15 +184,24 @@ void clear_sensitive_data(void)
 */
 void platform_heap_init(void)
 {
+    uint32_t heap_size = 0;
+    uint32_t rsv_size = 0;
+
     if(!g_trusty_startup_info)
         panic("g_trusty_startup_info is NULL!\n");
 
     if(g_trusty_startup_info->size_of_this_struct != sizeof(trusty_startup_info_t))
         panic("trusty startup structure mismatch!\n");
 
+    rsv_size  += PAGE_ALIGN(sizeof(trusty_device_info_t));
+    rsv_size  += PAGE_ALIGN(sizeof(trusty_startup_info_t));
+    rsv_size  += TRUSTY_ENTRY_OFFSET;
+    rsv_size  += (uintptr_t)(&_end) - (uintptr_t)(&_start);
+    heap_size = g_trusty_startup_info->mem_size;
+    heap_size -= rsv_size;
+
     /* update the heap with the real size passed from vmm */
-    _heap_end = (uintptr_t)
-        ((uintptr_t)(&_end) + g_trusty_startup_info->heap_size_in_mb MEGABYTES);
+    _heap_end = (uintptr_t) ((uintptr_t)(&_end) + heap_size);
 }
 
 void platform_early_init(void)

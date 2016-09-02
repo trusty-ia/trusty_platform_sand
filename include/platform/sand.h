@@ -53,8 +53,8 @@ typedef struct _trusty_startup_info{
     /* Used to double check structures match */
     uint32_t size_of_this_struct;
 
-    /* Heap size in MB asigned to LK */
-    uint32_t heap_size_in_mb;
+    /* IMR size for LK */
+    uint32_t mem_size;
 
     /* Used to calibrate TSC in LK */
     uint64_t calibrate_tsc_per_ms;

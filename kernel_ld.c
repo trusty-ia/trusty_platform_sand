@@ -26,7 +26,7 @@
 ENTRY(_start)
     SECTIONS
 {
-    .text TRUSTY_ENTRY_ADDR : {
+    .text TRUSTY_ENTRY_OFFSET : {
         __code_start = .;
         KEEP(*(.text.boot))
         *(.text* .sram.text)

@@ -21,18 +21,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* MUST keep consistent with macros defined in vendor/intel/fw/evmm */
-#define STARTAP_IMG_SIZE    0x20000
-#define SG_RUNTIME_SIZE     0xA00000
-
 #define TARGET_MAX_MEM_SIZE 0x80000000
 
 /* LK code entry offset to the LK memory start */
-/* Must be larger than 12K and less than SG_RUNTIME_SIZE */
-/* The memory is reserved for GDT, stack and MBI with 1 page each */
-#define TRUSTY_ENTRY_OFFSET 0x3000
-
-
-#define TRUSTY_START_ADDR   STARTAP_IMG_SIZE
-#define TRUSTY_ENTRY_ADDR   (TRUSTY_START_ADDR + TRUSTY_ENTRY_OFFSET)
-#define TRUSTY_SIZE         SG_RUNTIME_SIZE
+/* keep 1 PAGE from start, since VA/PA start from this point */
+#define TRUSTY_ENTRY_OFFSET 0x1000
