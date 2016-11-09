@@ -51,7 +51,7 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/mp.c
 endif
 
-$(BUILDDIR)/sand_kernel.ld: $(LOCAL_DIR)/kernel_ld.c $(LOCAL_DIR)/mem_map.h
+$(BUILDDIR)/sand_kernel.ld: $(LOCAL_DIR)/kernel_ld.c $(LOCAL_DIR)/mem_map.h $(CONFIGHEADER)
 	$(NOECHO)$(CC) -P -E $(GLOBAL_COMPILEFLAGS) $< -o $@
 
 LINKER_SCRIPT += \
