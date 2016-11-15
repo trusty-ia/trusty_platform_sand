@@ -76,25 +76,11 @@ extern enum handler_return sm_handle_irq(void);
 
 #define TRUSTY_VMCALL_PENDING_INTR 0x74727505 /* "tru" is 0x747275 */
 
-static unsigned int pendingintr[INT_VECTORS] =  {0};
 static inline void set_pending_intr_to_ns(uint8_t vector)
 {
-    static unsigned int counter = 0;
-
     if (vector > INT_VECTORS) {
         dprintf(CRITICAL, "error: internal failure in LK\n");
         return;
-    }
-
-    counter ++;
-    pendingintr[vector]++;
-
-    /* print it every 1000 times */
-    if (counter % 1000 == 0) {
-        for ( int k = 0; k < INT_VECTORS; k ++){
-            if (pendingintr[k])
-                dprintf(ALWAYS, "warning:irq/vector(%xH) occurred %d times\n",k,pendingintr[k]);
-        }
     }
 
     __asm__ __volatile__(
