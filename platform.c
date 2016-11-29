@@ -47,6 +47,7 @@ extern uint64_t __bss_start;
 extern uint64_t __bss_end;
 extern void pci_init(void);
 extern void arch_mmu_init_percpu(void);
+extern uint64_t get_mmio_base(void);
 
 /* Address width */
 uint32_t g_addr_width;
@@ -134,6 +135,16 @@ void platform_init_mmu_mappings(void)
     access = ARCH_MMU_FLAG_PERM_NO_EXECUTE;
     range.start_vaddr = range.start_paddr = (map_addr_t)_heap_end;
     range.size = ((map_addr_t)TARGET_MAX_MEM_SIZE - (map_addr_t)_heap_end);
+    x86_mmu_map_range(phy_init_table, &range, access);
+
+    /* Mapping for the MMIO base */
+    if (!g_mmio_base_addr)
+        g_mmio_base_addr = get_mmio_base();
+    access = ARCH_MMU_FLAG_UNCACHED |
+        ARCH_MMU_FLAG_PERM_USER |
+        ARCH_MMU_FLAG_PERM_NO_EXECUTE;
+    range.start_vaddr = range.start_paddr = (map_addr_t)g_mmio_base_addr;
+    range.size = 4096;
     x86_mmu_map_range(phy_init_table, &range, access);
 
     /* Moving to the new CR3 */

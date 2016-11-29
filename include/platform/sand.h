@@ -37,6 +37,7 @@ typedef struct _trusty_startup_info{
 }trusty_startup_info_t;
 
 extern trusty_startup_info_t* g_trusty_startup_info;
+extern uint64_t g_mmio_base_addr;
 
 void platform_init_interrupts(void);
 void platform_init_timer(void);
@@ -77,6 +78,5 @@ void pci_write32(uint8_t bus,
              uint32_t value);
 
 uint64_t pci_read_bar0(uint16_t pci_location);
-uint64_t get_mmio_base();
 
 #endif
