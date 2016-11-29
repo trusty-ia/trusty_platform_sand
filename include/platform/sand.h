@@ -17,36 +17,9 @@
 #define __SAND_H
 
 #include <stdint.h>
-
-/* NOTE: keep arch/x86/crt0.S or crt0_64.S in sync with these definitions */
-
-/* interrupts */
-#define INT_VECTORS 0xFF
-
-/* defined interrupts */
-#define INT_PIT             0x31 /* 0x31 is not used in Android */
-#define INT_RESCH           0x80
-
-/* exceptions */
-#define INT_DIVIDE_0        0x00
-#define INT_DEBUG_EX        0x01
-#define INT_INVALID_OP      0x06
-#define INT_DEV_NA_EX       0x07
-#define INT_MF              0x10
-#define INT_XM              0x13
-
-/* faults */
-#define INT_STACK_FAULT     0x0c
-#define INT_GP_FAULT        0x0d
-#define INT_PAGE_FAULT      0x0e
-
-#define KILOBYTE    *1024
-#define KILOBYTES   KILOBYTE
-#define MEGABYTE    *1024 KILOBYTES
-#define MEGABYTES   MEGABYTE
-#define GIGABYTE    *1024 MEGABYTES
-#define GIGABYTES   GIGABYTE
-
+#include <platform/sand_defs.h>
+#include <platform/uart.h>
+#include <platform/pci_config.h>
 
 /* Please keep align with definition in iKGT trusty_guest.h*/
 typedef struct _trusty_startup_info{
@@ -69,5 +42,41 @@ void platform_init_interrupts(void);
 void platform_init_timer(void);
 void platform_init_uart(void);
 void clear_sensitive_data(void);
+
+uint8_t pci_read8(uint8_t bus,
+            uint8_t device,
+            uint8_t function,
+            uint8_t reg_id);
+
+void pci_write8(uint8_t bus,
+            uint8_t device,
+            uint8_t function,
+            uint8_t reg_id,
+            uint8_t value);
+
+uint16_t pci_read16(uint8_t bus,
+            uint8_t device,
+            uint8_t function,
+            uint8_t reg_id);
+
+void pci_write16(uint8_t bus,
+            uint8_t device,
+            uint8_t function,
+            uint8_t reg_id,
+            uint16_t value);
+
+uint32_t pci_read32(uint8_t bus,
+            uint8_t device,
+            uint8_t function,
+            uint8_t reg_id);
+
+void pci_write32(uint8_t bus,
+             uint8_t device,
+             uint8_t function,
+             uint8_t reg_id,
+             uint32_t value);
+
+uint64_t pci_read_bar0(uint16_t pci_location);
+uint64_t get_mmio_base();
 
 #endif
