@@ -42,7 +42,6 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/platform.c \
 	$(LOCAL_DIR)/timer.c \
 	$(LOCAL_DIR)/debug.c \
-	$(LOCAL_DIR)/lkguest.c \
 	$(LOCAL_DIR)/entry.c \
 	$(LOCAL_DIR)/vmcall.c \
 	$(LOCAL_DIR)/lib/pci/pci_config.c
