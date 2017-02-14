@@ -129,13 +129,13 @@ void platform_init_mmu_mappings(void)
     access = 0;
     range.start_vaddr = range.start_paddr = (map_addr_t) 0;
     range.size = ((map_addr_t) & __code_start);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Mapping upper boundary to target maxium memory size */
     access = ARCH_MMU_FLAG_PERM_NO_EXECUTE;
     range.start_vaddr = range.start_paddr = (map_addr_t)_heap_end;
     range.size = ((map_addr_t)TARGET_MAX_MEM_SIZE - (map_addr_t)_heap_end);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Mapping for the MMIO base */
     if (!g_mmio_base_addr)
@@ -145,7 +145,7 @@ void platform_init_mmu_mappings(void)
         ARCH_MMU_FLAG_PERM_NO_EXECUTE;
     range.start_vaddr = range.start_paddr = (map_addr_t)g_mmio_base_addr;
     range.size = 4096;
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Moving to the new CR3 */
     g_CR3 = (map_addr_t) phy_init_table;
