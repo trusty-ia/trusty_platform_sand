@@ -33,7 +33,7 @@ extern int _start;
 #ifdef WITH_KERNEL_VM
 extern int _end;
 static uintptr_t _heap_start = (uintptr_t) &_end;
-static uintptr_t _heap_end = (uintptr_t) &_end;
+uintptr_t _heap_end = (uintptr_t) &_end;
 #else
 extern uintptr_t _heap_end;
 #endif
