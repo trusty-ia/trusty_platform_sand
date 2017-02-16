@@ -141,6 +141,15 @@ enum handler_return platform_irq(struct x86_iframe *frame)
             break;
 #endif
 
+        case INT_DYNC_TIMER:
+            if (!trigger_soft_intr_50) {
+                set_pending_intr_to_ns(vector);
+                ret = sm_handle_irq();
+            } else {
+                sm_handle_irq();
+            }
+            break;
+
         default:
             if (int_handler_table[vector].handler) {
                 ret = int_handler_table[vector].

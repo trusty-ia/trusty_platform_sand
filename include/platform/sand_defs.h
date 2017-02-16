@@ -24,6 +24,8 @@
 /* defined interrupts */
 #define INT_PIT             0x31 /* 0x31 is not used in Android */
 #define INT_RESCH           0x80
+#define INT_DYNC_TIMER      0x32 /* 0x32 soft interrupt for dynamic timer */
+#define TRUSTY_STOP_TIMER   0xFFFFFFFF
 
 /* exceptions */
 #define INT_DIVIDE_0        0x00

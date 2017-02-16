@@ -21,16 +21,22 @@
 
 void make_smc_vmcall(smc32_args_t *args, long ret)
 {
-    __asm__ __volatile__(
-		"pushq %%rbx;" /* save the ebx */
-		"vmcall;"
-		"mov %%ebx, %3;"
-		"popq %%rbx;" /* restore the old ebx */
+    args->params[0] = timer_delta_time;
 
-            :"=D"(args->smc_nr), "=S"(args->params[0]),
-            "=d"(args->params[1]), "=r"(args->params[2])
-            :"a"(TRUSTY_VMCALL_SMC), "D"(ret)
-            );
+    __asm__ __volatile__(
+        "pushq %%rbx;" /* save the rbx */
+        "mov %3, %%ebx;"
+        "vmcall;"
+        "mov %%ebx, %3;"
+        "popq %%rbx;" /* restore the old rbx */
+
+        :"=D"(args->smc_nr), "=S"(args->params[0]),
+        "=d"(args->params[1]), "=r"(args->params[2])
+        :"a"(TRUSTY_VMCALL_SMC), "D"(ret), "S"(args->params[0]),
+        "d"(args->params[1]), "r"(args->params[2])
+    );
+
+    timer_delta_time = 0;
 }
 
 void make_vmcall(uint32_t vmcall_id)

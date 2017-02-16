@@ -27,24 +27,26 @@ extern uint32_t sm_nr_fastcall_functions;
 extern smc32_handler_t sm_fastcall_function_table[];
 extern long smc_undefined(smc32_args_t * args);
 
+int32_t is_lk_boot_complete = 0;
+
 void sm_sched_nonsecure(long retval, smc32_args_t * args)
 {
     uint32_t smc_nr;
     u_int entry_nr;
     smc32_handler_t handler_fn = NULL;
-    static int lk_boot_complete = 0;
 
 return_sm_err:
     /*
      * All interrupts are masked at LK boot stage,
      * unmask all interruptes before LK switch back to NS world.
      */
-    if (0 == lk_boot_complete) {
+    if (0 == is_lk_boot_complete) {
         x86_set_cr8(0);
-        lk_boot_complete = 1;
+        is_lk_boot_complete = 1;
     }
 
     make_smc_vmcall(args, retval);
+    is_lk_boot_complete = 1;
 
     smc_nr = args->smc_nr;
     if (SMC_IS_SMC64(smc_nr)) {/* 64bits */

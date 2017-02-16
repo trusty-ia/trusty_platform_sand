@@ -19,9 +19,12 @@
 #include <platform/interrupts.h>
 #include <platform/timer.h>
 #include <platform/sand.h>
+#include <arch/ops.h>
+#include <arch/x86.h>
 
 static volatile uint64_t timer_current_time; /* in ms */
-static uint64_t timer_delta_time; /* in ms */
+uint64_t timer_delta_time; /* in ms */
+volatile uint32_t trigger_soft_intr_50 = 0;
 
 static platform_timer_callback t_callback;
 static void *callback_arg;
@@ -43,6 +46,12 @@ static inline void make_timer_vmcall(vmx_timer_mode_t mode, uint64_t interval_in
 
 lk_time_t current_time(void)
 {
+    uint64_t val;
+    uint32_t low, high;
+    rdtsc(low, high);
+    val = (uint64_t)((uint64_t)high <<32 | (uint64_t)low);
+    timer_current_time = val/(uint64_t)(g_trusty_startup_info->calibrate_tsc_per_ms);
+
     return timer_current_time;
 }
 
@@ -52,6 +61,27 @@ lk_bigtime_t current_time_hires(void)
 }
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
+void platform_trigger_soft_timer_intr(void)
+{
+    uint32_t ints_disabled = 0;
+
+    if (!arch_ints_disabled()) {
+        arch_disable_ints();
+        ints_disabled = 1;
+    }
+
+    trigger_soft_intr_50 = 1;
+    __asm__ __volatile__ ("int $50");
+    trigger_soft_intr_50 = 0;
+
+    if (ints_disabled) {
+        arch_enable_ints();
+        ints_disabled = 0;
+    }
+
+    return;
+}
+
 status_t platform_set_oneshot_timer(platform_timer_callback callback,
         void *arg, lk_time_t interval)
 {
@@ -59,17 +89,26 @@ status_t platform_set_oneshot_timer(platform_timer_callback callback,
     callback_arg = arg;
     timer_delta_time = interval;
 
+    if(0 != is_lk_boot_complete) {
+        platform_trigger_soft_timer_intr();
+    }
+
     /* vmcall to set oneshot timer with interval (in ms) */
-    make_timer_vmcall(TIMER_MODE_ONESHOT, interval);
+    //make_timer_vmcall(TIMER_MODE_ONESHOT, interval);
 
     return NO_ERROR;
 }
 
 void platform_stop_timer(void)
 {
-    /* vmcall to stop timer */
-    make_timer_vmcall(TIMER_MODE_STOPPED, 0);
+    if(0 != is_lk_boot_complete) {
+        timer_delta_time = TRUSTY_STOP_TIMER;
+
+        platform_trigger_soft_timer_intr();
+    }
+    return;
 }
+
 #else
 status_t platform_set_periodic_timer(platform_timer_callback callback,
         void *arg, lk_time_t interval)
@@ -89,14 +128,23 @@ status_t platform_set_periodic_timer(platform_timer_callback callback,
 
 static enum handler_return os_timer_tick(void *arg)
 {
+#ifndef PLATFORM_HAS_DYNAMIC_TIMER
     timer_current_time += timer_delta_time;
+#endif
     lk_time_t time = current_time();
     return t_callback(callback_arg, time);
 }
 
 void platform_init_timer(void)
 {
+#ifndef PLATFORM_HAS_DYNAMIC_TIMER
     timer_current_time = 0;
+#else
+    lk_time_t time = current_time();
+
+    timer_current_time = time;
+#endif
+
     register_int_handler(INT_PIT, &os_timer_tick, NULL);
     unmask_interrupt(INT_PIT);
 }
