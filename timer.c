@@ -14,6 +14,7 @@
  * limitations under the License.
  *******************************************************************************/
 #include <sys/types.h>
+#include <err.h>
 #include <platform.h>
 #include <platform/interrupts.h>
 #include <platform/timer.h>
@@ -60,6 +61,8 @@ status_t platform_set_oneshot_timer(platform_timer_callback callback,
 
     /* vmcall to set oneshot timer with interval (in ms) */
     make_timer_vmcall(TIMER_MODE_ONESHOT, interval);
+
+    return NO_ERROR;
 }
 
 void platform_stop_timer(void)
@@ -79,6 +82,8 @@ status_t platform_set_periodic_timer(platform_timer_callback callback,
 #if 0/*when using proxied timer disable periodic timer*/
     make_timer_vmcall(TIMER_MODE_PERIOD, interval);
 #endif
+
+    return NO_ERROR;
 }
 #endif
 
