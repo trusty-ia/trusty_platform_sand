@@ -84,8 +84,11 @@ static inline void set_pending_intr_to_ns(uint8_t vector)
     }
 
     __asm__ __volatile__(
-            "vmcall"
-            ::"a"(TRUSTY_VMCALL_PENDING_INTR), "b"(vector)
+            "pushq %%rbx \n\t"
+            "mov %%rcx, %%rbx \n\t"
+            "vmcall \n\t"
+            "popq %%rbx \n\t"
+            ::"a"(TRUSTY_VMCALL_PENDING_INTR), "c"(vector)
             );
 }
 

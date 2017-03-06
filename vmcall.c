@@ -22,9 +22,13 @@
 void make_smc_vmcall(smc32_args_t *args, long ret)
 {
     __asm__ __volatile__(
-            "vmcall"
+		"pushq %%rbx;" /* save the ebx */
+		"vmcall;"
+		"mov %%ebx, %3;"
+		"popq %%rbx;" /* restore the old ebx */
+
             :"=D"(args->smc_nr), "=S"(args->params[0]),
-            "=d"(args->params[1]), "=b"(args->params[2])
+            "=d"(args->params[1]), "=r"(args->params[2])
             :"a"(TRUSTY_VMCALL_SMC), "D"(ret)
             );
 }
