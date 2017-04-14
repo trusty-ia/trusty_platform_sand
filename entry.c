@@ -32,8 +32,18 @@ void sm_sched_nonsecure(long retval, smc32_args_t * args)
     uint32_t smc_nr;
     u_int entry_nr;
     smc32_handler_t handler_fn = NULL;
+    static int lk_boot_complete = 0;
 
 return_sm_err:
+    /*
+     * All interrupts are masked at LK boot stage,
+     * unmask all interruptes before LK switch back to NS world.
+     */
+    if (0 == lk_boot_complete) {
+        x86_set_cr8(0);
+        lk_boot_complete = 1;
+    }
+
     make_smc_vmcall(args, retval);
 
     smc_nr = args->smc_nr;

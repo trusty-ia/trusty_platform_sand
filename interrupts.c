@@ -50,6 +50,10 @@ void issueEOI(unsigned int vector)
 
 void platform_init_interrupts(void)
 {
+    /*
+     * Mask all interrputs before LK bootup
+     */
+    x86_set_cr8(0xF);
 }
 
 status_t mask_interrupt(unsigned int vector)
