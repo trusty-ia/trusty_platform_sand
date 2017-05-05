@@ -34,7 +34,6 @@ void sm_sched_nonsecure(long retval, smc32_args_t * args)
     uint32_t smc_nr;
     u_int entry_nr;
     smc32_handler_t handler_fn = NULL;
-
 return_sm_err:
     /*
      * All interrupts are masked at LK boot stage,

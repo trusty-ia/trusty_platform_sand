@@ -23,14 +23,22 @@
 #include <platform/debug.h>
 #include <platform/sand.h>
 #include <string.h>
+#include <kernel/vm.h>
+#include <kernel/mutex.h>
+
+#define BUF_SIZE 4096
+static char uart_early_buf[BUF_SIZE];
+static int put_idx = 0, get_idx = 0;
+static mutex_t uart_lock = MUTEX_INITIAL_VALUE(uart_lock);
+
+
 
 extern having_print_cb;
-
 uint8_t (*io_get_reg)(uint64_t base_addr, uint32_t reg_id);
 void (*io_set_reg)(uint64_t base_addr, uint32_t reg_id, uint8_t val);
 
 #if PRINT_USE_MMIO
-uint64_t g_mmio_base_addr = 0;
+static uint64_t mmio_base_addr = 0;
 
 static uint8_t uart_mmio_get_reg(uint64_t base_addr, uint32_t reg_id)
 {
@@ -44,11 +52,7 @@ static void uart_mmio_set_reg(uint64_t base_addr, uint32_t reg_id, uint8_t val)
 
 uint64_t get_mmio_base(void)
 {
-    uint64_t io_base = 0;
-    /*MMIO HSUART2: 00.24.2
-     *bus:0; device:24; function:2; reg:0x10*/
-    io_base = (uint64_t)(pci_read32(0, 24, 2, 0x10) & ~0xF);
-    return io_base;
+    return mmio_base_addr;
 }
 #elif PRINT_USE_IO_PORT
 inline uint8_t asm_in8(uint16_t port)
@@ -88,9 +92,7 @@ static void uart_putc(char c)
     uint64_t io_base;
 
 #if PRINT_USE_MMIO
-    if (!g_mmio_base_addr)
-        g_mmio_base_addr = get_mmio_base();
-    io_base = g_mmio_base_addr;
+    io_base = mmio_base_addr;
     io_get_reg = uart_mmio_get_reg;
     io_set_reg = uart_mmio_set_reg;
 #elif PRINT_USE_IO_PORT
@@ -101,12 +103,34 @@ static void uart_putc(char c)
     return;
 #endif
 
-    while (1) {
-        lsr.data = io_get_reg(io_base, UART_REGISTER_LSR);
-        if (lsr.bits.thre == 1)
-            break;
+    mutex_acquire(&uart_lock);
+
+    uart_early_buf[put_idx++] = c;
+    put_idx %= BUF_SIZE;
+    if (put_idx == get_idx) {
+        get_idx++;
+        get_idx %= BUF_SIZE;
     }
-    io_set_reg(io_base, UART_REGISTER_THR, c);
+
+#if PRINT_USE_MMIO
+    if (!mmio_base_addr) {
+        mutex_release(&uart_lock);
+        return;
+    }
+#endif
+
+    while (put_idx != get_idx) {
+        while (1) {
+            lsr.data = io_get_reg(io_base, UART_REGISTER_LSR);
+            if (lsr.bits.thre == 1)
+                break;
+        }
+        io_set_reg(io_base, UART_REGISTER_THR, uart_early_buf[get_idx]);
+        get_idx++;
+        get_idx %= BUF_SIZE;
+    }
+
+    mutex_release(&uart_lock);
 }
 
 void platform_dputc(char c)
@@ -123,4 +147,23 @@ int platform_dgetc(char *c, bool wait)
 {
     return 0;
 }
+
+#if PRINT_USE_MMIO
+void init_uart(void)
+{
+    status_t ret;
+    uint64_t io_base = 0;
+
+    io_base = (uint64_t)(pci_read32(0, 24, 2, 0x10) & ~0xF);
+    ret = vmm_alloc_physical(vmm_get_kernel_aspace(), "uart", 4096,
+        &mmio_base_addr, PAGE_SIZE_SHIFT, io_base, 0, ARCH_MMU_FLAG_UNCACHED_DEVICE);
+
+    if (ret) {
+        dprintf(CRITICAL, "%s: failed %d\n", __func__, ret);
+        return;
+    }
+
+    uart_putc('\n');
+}
+#endif
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2015 Intel Corporation
+ * Copyright (c) 2017 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include <platform/sand.h>
 #include <arch/ops.h>
 #include <arch/x86.h>
+#include <kernel/vm.h>
 
 static volatile uint64_t timer_current_time; /* in ms */
 uint64_t timer_delta_time; /* in ms */
@@ -48,9 +49,10 @@ lk_time_t current_time(void)
 {
     uint64_t val;
     uint32_t low, high;
+
     rdtsc(low, high);
     val = (uint64_t)((uint64_t)high <<32 | (uint64_t)low);
-    timer_current_time = val/(uint64_t)(g_trusty_startup_info->calibrate_tsc_per_ms);
+    timer_current_time = val/(uint64_t)(g_trusty_startup_info.calibrate_tsc_per_ms);
 
     return timer_current_time;
 }
@@ -117,17 +119,15 @@ status_t platform_set_periodic_timer(platform_timer_callback callback,
     callback_arg = arg;
     timer_delta_time = interval;
 
-    /* vmcall to set period timer with interval (in ms) */
-#if 0/*when using proxied timer disable periodic timer*/
-    make_timer_vmcall(TIMER_MODE_PERIOD, interval);
-#endif
-
     return NO_ERROR;
 }
 #endif
 
 static enum handler_return os_timer_tick(void *arg)
 {
+    if (!t_callback)
+        return 0;
+
 #ifndef PLATFORM_HAS_DYNAMIC_TIMER
     timer_current_time += timer_delta_time;
 #endif

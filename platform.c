@@ -27,16 +27,8 @@
 #include "mem_map.h"
 #include <lib/trusty/trusty_device_info.h>
 
-extern int _end_of_ram;
 extern int _start;
-
-#ifdef WITH_KERNEL_VM
 extern int _end;
-static uintptr_t _heap_start = (uintptr_t) &_end;
-uintptr_t _heap_end = (uintptr_t) &_end;
-#else
-extern uintptr_t _heap_end;
-#endif
 extern uint64_t __code_start;
 extern uint64_t __code_end;
 extern uint64_t __rodata_start;
@@ -45,147 +37,116 @@ extern uint64_t __data_start;
 extern uint64_t __data_end;
 extern uint64_t __bss_start;
 extern uint64_t __bss_end;
-extern void pci_init(void);
 extern void arch_mmu_init_percpu(void);
-extern uint64_t get_mmio_base(void);
+#if PRINT_USE_MMIO
+extern void init_uart(void);
+#endif
 
-/* Address width */
-uint32_t g_addr_width;
-
-/* Kernel global CR3 */
-map_addr_t g_CR3 = 0;
+trusty_startup_info_t g_trusty_startup_info __ALIGNED(8);
+uint8_t g_dev_info_buf[PAGE_SIZE] __ALIGNED(8);
+trusty_device_info_t* g_dev_info = g_dev_info_buf;
+uintptr_t real_run_addr;
 
 #ifdef WITH_KERNEL_VM
 struct mmu_initial_mapping mmu_initial_mappings[] = {
-    {.phys = TRUSTY_ENTRY_OFFSET,
-        .virt = TRUSTY_ENTRY_OFFSET,
-        .size = TARGET_MAX_MEM_SIZE - TRUSTY_ENTRY_OFFSET,
+    /* 16MB of memory mapped where the kernel lives */
+    {
+        .phys = MEMBASE + KERNEL_LOAD_OFFSET,
+        .virt = KERNEL_BASE + KERNEL_LOAD_OFFSET,
+        .size = 16*MB,
         .flags = 0,
-        .name = "memory"},
-    /* 1 GB of memory */
-    {.phys = 0,
-        .virt = 0,
-        .size = 1024 * 1024 * 1024,
-        .flags = MMU_INITIAL_MAPPING_TEMPORARY},
-    /* null entry to terminate the list */
+        .name = "kernel"
+    },
     {0}
 };
+
+static pmm_arena_t heap_arena = {
+    .name = "memory",
+    .base = MEMBASE,
+    .size = 0, /* default amount of memory in case we don't have multiboot */
+    .priority = 1,
+    .flags = PMM_ARENA_FLAG_KMAP
+};
+
+static void heap_arena_init()
+{
+    heap_arena.base = PAGE_ALIGN(mmu_initial_mappings[0].phys);
+    heap_arena.size = PAGE_ALIGN(mmu_initial_mappings[0].size);
+}
 #endif
 
 void platform_init_mmu_mappings(void)
 {
     struct map_range range;
     arch_flags_t access;
-    map_addr_t *init_table, phy_init_table;
-
-    /* getting the address width from CPUID instr */
-    g_addr_width = x86_get_address_width();
-
-    /* Creating the First page in the page table hirerachy */
-    /* Can be pml4, pdpt or pdt based on x86_64, x86 PAE mode & x86 non-PAE mode respectively */
-    init_table = memalign(PAGE_SIZE, PAGE_SIZE);
-    ASSERT(init_table);
-    memset(init_table, 0, PAGE_SIZE);
-
-    phy_init_table = (map_addr_t) X86_VIRT_TO_PHYS(init_table);
+    map_addr_t pml4_table = paddr_to_kvaddr(get_kernel_cr3());
 
     /* kernel code section mapping */
     access = ARCH_MMU_FLAG_PERM_RO;
-    range.start_vaddr = range.start_paddr = (map_addr_t) & __code_start;
+    range.start_vaddr = (map_addr_t) & __code_start;
+    range.start_paddr = vaddr_to_paddr((map_addr_t) & __code_start);
     range.size =
         ((map_addr_t) & __code_end) - ((map_addr_t) & __code_start);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(pml4_table, &range, access);
 
     /* kernel data section mapping */
     access = 0;
 #if defined(ARCH_X86_64) || defined(PAE_MODE_ENABLED)
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
-    range.start_vaddr = range.start_paddr = (map_addr_t) & __data_start;
+    range.start_vaddr = (map_addr_t) & __data_start;
+    range.start_paddr = vaddr_to_paddr((map_addr_t) & __data_start);
     range.size =
         ((map_addr_t) & __data_end) - ((map_addr_t) & __data_start);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(pml4_table, &range, access);
 
     /* kernel rodata section mapping */
     access = ARCH_MMU_FLAG_PERM_RO;
 #if defined(ARCH_X86_64) || defined(PAE_MODE_ENABLED)
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
-    range.start_vaddr = range.start_paddr = (map_addr_t) & __rodata_start;
+    range.start_vaddr = (map_addr_t) & __rodata_start;
+    range.start_paddr = vaddr_to_paddr((map_addr_t) & __rodata_start);
     range.size =
         ((map_addr_t) & __rodata_end) - ((map_addr_t) & __rodata_start);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    x86_mmu_map_range(pml4_table, &range, access);
 
     /* kernel bss section and kernel heap mappings */
     access = 0;
 #ifdef ARCH_X86_64
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
-    range.start_vaddr = range.start_paddr = (map_addr_t) & __bss_start;
-    range.size = ((map_addr_t) _heap_end) - ((map_addr_t) & __bss_start);
-    x86_mmu_map_range(phy_init_table, &range, access);
+    range.start_vaddr =  (map_addr_t) & __bss_start;
+    range.start_paddr = vaddr_to_paddr((map_addr_t) & __bss_start);
+    range.size = ((map_addr_t) &__bss_end) - ((map_addr_t) & __bss_start);
+    x86_mmu_map_range(pml4_table, &range, access);
 
-    /* Mapping for BIOS, devices */
-    access = 0;
-    range.start_vaddr = range.start_paddr = (map_addr_t) 0;
-    range.size = ((map_addr_t) & __code_start);
-    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
+    /* Mapping lower boundary to kernel start */
+    access = ARCH_MMU_FLAG_PERM_NO_EXECUTE;
+    range.start_vaddr = (map_addr_t)paddr_to_kvaddr(mmu_initial_mappings[0].phys);
+    range.start_paddr = mmu_initial_mappings[0].phys;
+    range.size = vaddr_to_paddr((map_addr_t)&_start) - mmu_initial_mappings[0].phys;
+    x86_mmu_map_range(pml4_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Mapping upper boundary to target maxium memory size */
-    access = ARCH_MMU_FLAG_PERM_NO_EXECUTE;
-    range.start_vaddr = range.start_paddr = (map_addr_t)_heap_end;
-    range.size = ((map_addr_t)TARGET_MAX_MEM_SIZE - (map_addr_t)_heap_end);
-    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
-
-    /* Mapping for the MMIO base */
-#if PRINT_USE_MMIO
-    if (!g_mmio_base_addr)
-        g_mmio_base_addr = get_mmio_base();
-    access = ARCH_MMU_FLAG_UNCACHED |
-        ARCH_MMU_FLAG_PERM_USER |
-        ARCH_MMU_FLAG_PERM_NO_EXECUTE;
-    range.start_vaddr = range.start_paddr = (map_addr_t)g_mmio_base_addr;
-    range.size = 4096;
-    x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
-#endif
+    map_addr_t va = &_end;
+    range.start_vaddr = (map_addr_t)PAGE_ALIGN(va);
+    range.start_paddr = vaddr_to_paddr((map_addr_t)PAGE_ALIGN(va));
+    range.size = ((map_addr_t)(mmu_initial_mappings[0].phys + mmu_initial_mappings[0].size) - range.start_paddr);
+    x86_mmu_map_range(pml4_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Moving to the new CR3 */
-    g_CR3 = (map_addr_t) phy_init_table;
-    x86_set_cr3((map_addr_t) phy_init_table);
+    x86_set_cr3(get_kernel_cr3());
 }
-
-#ifdef WITH_KERNEL_VM
-static pmm_arena_t heap_arena = {
-    .name = "heap",
-    .base = 0,
-    .size = 0,
-    .priority = 1,
-    .flags = PMM_ARENA_FLAG_KMAP
-};
-
-void heap_arena_init()
-{
-    uintptr_t heap_base = ((uintptr_t) _heap_start);
-    uintptr_t heap_size = (uintptr_t) _heap_end - (uintptr_t) _heap_start;
-
-    heap_arena.base = PAGE_ALIGN(heap_base);
-    heap_arena.size = PAGE_ALIGN(heap_size);
-}
-#endif
 
 void clear_sensitive_data(void)
 {
-    trusty_device_info_t *   dev_info = NULL;
-
-    if(g_trusty_startup_info && g_trusty_startup_info->size_of_this_struct > 0) {
-        dev_info = (trusty_device_info_t *)g_trusty_startup_info->trusty_mem_base;
-        /* clear the trusty_device_info_t */
-        if(dev_info && dev_info->size > 0)
-            memset(dev_info, 0, dev_info->size);
+    if(g_trusty_startup_info.size_of_this_struct > 0) {
+        if(g_dev_info->size > 0)
+            memset(g_dev_info, 0, g_dev_info->size);
 
         /* clear the g_trusty_startup_info */
-        memset(g_trusty_startup_info, 0, g_trusty_startup_info->size_of_this_struct);
-        g_trusty_startup_info = NULL;
+        memset(&g_trusty_startup_info, 0, sizeof(trusty_startup_info_t));
     }
 }
 
@@ -195,38 +156,23 @@ void clear_sensitive_data(void)
 * is not expect, it will failed with SMC call since Android
 * not started yet.
 */
-void platform_heap_init(void)
+static void platform_heap_init(void)
 {
-    uint32_t heap_size = 0;
-    uint32_t rsv_size = 0;
-
-    if(!g_trusty_startup_info)
-        panic("g_trusty_startup_info is NULL!\n");
-
-    if(g_trusty_startup_info->size_of_this_struct != sizeof(trusty_startup_info_t))
-        panic("trusty startup structure mismatch!\n");
-
-    rsv_size  += PAGE_ALIGN(sizeof(trusty_device_info_t));
-    rsv_size  += PAGE_ALIGN(sizeof(trusty_startup_info_t));
-    rsv_size  += TRUSTY_ENTRY_OFFSET;
-    rsv_size  += (uintptr_t)(&_end) - (uintptr_t)(&_start);
-    heap_size = g_trusty_startup_info->mem_size;
-    heap_size -= rsv_size;
-
-    /* update the heap with the real size passed from vmm */
-    _heap_end = (uintptr_t) ((uintptr_t)(&_end) + heap_size);
+    mmu_initial_mappings[0].phys = g_trusty_startup_info.trusty_mem_base;
+    mmu_initial_mappings[0].virt = &_start;
+    mmu_initial_mappings[0].virt -= (real_run_addr - g_trusty_startup_info.trusty_mem_base);
 }
 
 void platform_early_init(void)
 {
+    /* initialize the heap */
+    platform_heap_init();
+
     /* initialize the interrupt controller */
     platform_init_interrupts();
 
     /* initialize the timer */
     platform_init_timer();
-
-    /* initialize the heap */
-    platform_heap_init();
 
 #ifdef WITH_KERNEL_VM
     heap_arena_init();
@@ -236,8 +182,12 @@ void platform_early_init(void)
 
 void platform_init(void)
 {
-
     /* MMU init for x86 Archs done after the heap is setup */
-    arch_mmu_init_percpu();
+   // arch_mmu_init_percpu();
+#if PRINT_USE_MMIO
+    init_uart();
+#endif
+
     platform_init_mmu_mappings();
+    x86_mmu_init();
 }

@@ -20,6 +20,7 @@
 #include <platform/sand_defs.h>
 #include <platform/uart.h>
 #include <platform/pci_config.h>
+#include <lib/trusty/trusty_device_info.h>
 
 /* Please keep align with definition in iKGT trusty_guest.h*/
 typedef struct _trusty_startup_info{
@@ -36,10 +37,9 @@ typedef struct _trusty_startup_info{
     uint64_t trusty_mem_base;
 }trusty_startup_info_t;
 
-extern trusty_startup_info_t* g_trusty_startup_info;
-#if PRINT_USE_MMIO
-extern uint64_t g_mmio_base_addr;
-#endif
+extern trusty_startup_info_t g_trusty_startup_info;
+extern trusty_device_info_t* g_dev_info;
+
 extern volatile uint32_t trigger_soft_intr_50;
 extern uint64_t timer_delta_time;
 extern int32_t is_lk_boot_complete;

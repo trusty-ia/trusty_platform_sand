@@ -31,9 +31,6 @@ GLOBAL_DEFINES += \
 	    ENABLE_TRUSTY_SIMICS=1
 endif
 
-KERNEL_ASPACE_BASE = $$(($(RUNTIME_MEM_BASE) + $(TRUSTY_RSV_MEM_SIZE)))
-KERNEL_ASPACE_SIZE = $$(($(TARGET_MAX_MEM_SIZE)- $(KERNEL_ASPACE_BASE)))
-
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/include
 
@@ -51,11 +48,10 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/mp.c
 endif
 
-$(BUILDDIR)/sand_kernel.ld: $(LOCAL_DIR)/kernel_ld.c $(LOCAL_DIR)/mem_map.h $(CONFIGHEADER)
-	$(NOECHO)$(CC) -P -E $(GLOBAL_COMPILEFLAGS) $< -o $@
 
-LINKER_SCRIPT += \
-	$(BUILDDIR)/sand_kernel.ld
+
+EXTRA_LINKER_SCRIPTS += \
+	$(LOCAL_DIR)/user_stack.ld
 
 include make/module.mk
 
