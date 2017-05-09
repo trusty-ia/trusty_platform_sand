@@ -37,7 +37,9 @@ typedef struct _trusty_startup_info{
 }trusty_startup_info_t;
 
 extern trusty_startup_info_t* g_trusty_startup_info;
+#if PRINT_USE_MMIO
 extern uint64_t g_mmio_base_addr;
+#endif
 extern volatile uint32_t trigger_soft_intr_50;
 extern uint64_t timer_delta_time;
 extern int32_t is_lk_boot_complete;

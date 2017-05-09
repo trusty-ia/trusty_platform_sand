@@ -26,6 +26,10 @@
 
 extern having_print_cb;
 
+uint8_t (*io_get_reg)(uint64_t base_addr, uint32_t reg_id);
+void (*io_set_reg)(uint64_t base_addr, uint32_t reg_id, uint8_t val);
+
+#if PRINT_USE_MMIO
 uint64_t g_mmio_base_addr = 0;
 
 static uint8_t uart_mmio_get_reg(uint64_t base_addr, uint32_t reg_id)
@@ -46,20 +50,63 @@ uint64_t get_mmio_base(void)
     io_base = (uint64_t)(pci_read32(0, 24, 2, 0x10) & ~0xF);
     return io_base;
 }
+#elif PRINT_USE_IO_PORT
+inline uint8_t asm_in8(uint16_t port)
+{
+    uint8_t val8;
+
+    __asm__ __volatile__ (
+            "inb %1, %0"
+            : "=a" (val8)
+            : "d" (port));
+    return val8;
+}
+
+inline void asm_out8(uint16_t port, uint8_t val8)
+{
+    __asm__ __volatile__ (
+            "outb %1, %0"
+            :
+            : "d" (port), "a" (val8));
+
+}
+
+static uint8_t serial_io_get_reg(uint64_t base_addr, uint32_t reg_id)
+{
+    return asm_in8((uint16_t)base_addr + (uint16_t)reg_id);
+}
+
+static void serial_io_set_reg(uint64_t base_addr, uint32_t reg_id, uint8_t val)
+{
+    asm_out8((uint16_t)base_addr + (uint16_t)reg_id, val);
+}
+#endif
 
 static void uart_putc(char c)
 {
     uart_lsr_t lsr;
+    uint64_t io_base;
 
+#if PRINT_USE_MMIO
     if (!g_mmio_base_addr)
         g_mmio_base_addr = get_mmio_base();
+    io_base = g_mmio_base_addr;
+    io_get_reg = uart_mmio_get_reg;
+    io_set_reg = uart_mmio_set_reg;
+#elif PRINT_USE_IO_PORT
+    io_get_reg = serial_io_get_reg;
+    io_set_reg = serial_io_set_reg;
+    io_base = TARGET_SERIAL_IO_BASE;
+#else
+    return;
+#endif
 
     while (1) {
-        lsr.data = uart_mmio_get_reg(g_mmio_base_addr, UART_REGISTER_LSR);
+        lsr.data = io_get_reg(io_base, UART_REGISTER_LSR);
         if (lsr.bits.thre == 1)
             break;
     }
-    uart_mmio_set_reg(g_mmio_base_addr, UART_REGISTER_THR, c);
+    io_set_reg(io_base, UART_REGISTER_THR, c);
 }
 
 void platform_dputc(char c)

@@ -138,6 +138,7 @@ void platform_init_mmu_mappings(void)
     x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Mapping for the MMIO base */
+#if PRINT_USE_MMIO
     if (!g_mmio_base_addr)
         g_mmio_base_addr = get_mmio_base();
     access = ARCH_MMU_FLAG_UNCACHED |
@@ -146,6 +147,7 @@ void platform_init_mmu_mappings(void)
     range.start_vaddr = range.start_paddr = (map_addr_t)g_mmio_base_addr;
     range.size = 4096;
     x86_mmu_map_range(phy_init_table, &range, access | ARCH_MMU_FLAG_NS);
+#endif
 
     /* Moving to the new CR3 */
     g_CR3 = (map_addr_t) phy_init_table;
