@@ -15,10 +15,14 @@
  *******************************************************************************/
 #include <platform/sand.h>
 #include <platform/vmcall.h>
+#include <stdlib.h>
 
 #define TRUSTY_VMCALL_SMC               0x74727500 /* "tru" is 0x747275 */
 #define TRUSTY_VMCALL_RESCHEDULE        0x74727501 /* "tru" is 0x747275 */
 #define TRUSTY_VMCALL_PENDING_INTR_SELF 0x74727509 /* "tru" is 0x747275 */
+#ifdef EPT_DEBUG
+#define VMCALL_EPT_UPDATE        0x65707501
+#endif
 
 void make_smc_vmcall(smc32_args_t *args, long ret)
 {
@@ -58,3 +62,24 @@ void make_set_pending_intr_self_vmcall(uint8_t vector)
         :"a"(TRUSTY_VMCALL_PENDING_INTR_SELF), "b"(vector)
     );
 }
+
+#ifdef EPT_DEBUG
+void make_ept_update_vmcall(ept_update_t action, uint64_t start, uint64_t size)
+{
+    uint64_t start_align = ROUNDDOWN(start, PAGE_SIZE);
+    uint64_t end_align = ROUNDUP(start+size, PAGE_SIZE);
+    size = end_align - start_align;
+    int flush_all_cpus = 0;
+
+#if SMP_MAX_CPUS > 1
+    flush_all_cpus = 1;
+#endif
+
+    __asm__ __volatile__(
+        "vmcall;"
+        :
+        :"a"(VMCALL_EPT_UPDATE), "D"(start), "S"(size),
+        "d"(action), "c"(flush_all_cpus)
+    );
+}
+#endif

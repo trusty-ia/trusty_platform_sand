@@ -25,6 +25,7 @@
 #include <string.h>
 #include <kernel/vm.h>
 #include <kernel/mutex.h>
+#include <platform/vmcall.h>
 
 #define BUF_SIZE 4096
 static char uart_early_buf[BUF_SIZE];
@@ -162,6 +163,10 @@ void init_uart(void)
         dprintf(CRITICAL, "%s: failed %d\n", __func__, ret);
         return;
     }
+
+#ifdef EPT_DEBUG
+    make_ept_update_vmcall(ADD, io_base, 4096);
+#endif
 
     uart_putc('\n');
 }
