@@ -107,46 +107,13 @@ enum handler_return platform_irq(x86_iframe_t *frame)
     enum handler_return ret = INT_NO_RESCHEDULE;
 
     switch (vector) {
-        case INT_GP_FAULT:
-            x86_gpf_handler(frame);
-            break;
-
-        case INT_INVALID_OP:
-            x86_invop_handler(frame);
-            break;
-        case INT_PAGE_FAULT:
-#ifdef ARCH_X86_64
-            x86_pfe_handler(frame);
-#endif
-            break;
-
-        case INT_DEV_NA_EX:
-#ifdef ENABLE_FPU
-            fpu_dev_na_handler();
-            break;
-#endif
-        case INT_MF:
-        case INT_XM:
-        case INT_DIVIDE_0:
-        case INT_DEBUG_EX:
-        case INT_STACK_FAULT:
-        case 3:
-            x86_unhandled_exception(frame);
-            break;
-
-#if ENABLE_TRUSTY_SIMICS
-            /* Workaround for Simics modeling issue. TODO: remove this when GSD tape in. */
-#define INT_RESERVED_15 0xf
-        case INT_RESERVED_15:
-            break;
-#endif
-
         case INT_DYNC_TIMER:
-            if (!trigger_soft_intr_50) {
+            if (!trigger_pending_intr_50) {
                 set_pending_intr_to_ns(vector);
                 ret = sm_handle_irq();
             } else {
                 sm_handle_irq();
+                trigger_pending_intr_50 = 0;
             }
             break;
 
@@ -162,6 +129,7 @@ enum handler_return platform_irq(x86_iframe_t *frame)
                  */
                 ret = sm_handle_irq();
             }
+            break;
     }
 
     /*

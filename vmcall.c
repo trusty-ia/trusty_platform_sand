@@ -16,8 +16,9 @@
 #include <platform/sand.h>
 #include <platform/vmcall.h>
 
-#define TRUSTY_VMCALL_SMC 0x74727500 /* "tru" is 0x747275 */
-#define TRUSTY_VMCALL_RESCHEDULE 0x74727501 /* "tru" is 0x747275 */
+#define TRUSTY_VMCALL_SMC               0x74727500 /* "tru" is 0x747275 */
+#define TRUSTY_VMCALL_RESCHEDULE        0x74727501 /* "tru" is 0x747275 */
+#define TRUSTY_VMCALL_PENDING_INTR_SELF 0x74727509 /* "tru" is 0x747275 */
 
 void make_smc_vmcall(smc32_args_t *args, long ret)
 {
@@ -44,7 +45,16 @@ void make_vmcall(uint32_t vmcall_id)
     __asm__ __volatile__ ("vmcall"::"a"(vmcall_id));
 }
 
-void make_schedule_vmcall()
+void make_schedule_vmcall(void)
 {
     make_vmcall(TRUSTY_VMCALL_RESCHEDULE);
+}
+
+void make_set_pending_intr_self_vmcall(uint8_t vector)
+{
+    __asm__ __volatile__ (
+        "vmcall"
+        :
+        :"a"(TRUSTY_VMCALL_PENDING_INTR_SELF), "b"(vector)
+    );
 }

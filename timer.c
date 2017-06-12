@@ -22,10 +22,11 @@
 #include <arch/ops.h>
 #include <arch/x86.h>
 #include <kernel/vm.h>
+#include <platform/vmcall.h>
 
 static volatile uint64_t timer_current_time; /* in ms */
 uint64_t timer_delta_time; /* in ms */
-volatile uint32_t trigger_soft_intr_50 = 0;
+volatile uint32_t trigger_pending_intr_50 = 0;
 
 static platform_timer_callback t_callback;
 static void *callback_arg;
@@ -65,21 +66,8 @@ lk_bigtime_t current_time_hires(void)
 #if PLATFORM_HAS_DYNAMIC_TIMER
 void platform_trigger_soft_timer_intr(void)
 {
-    uint32_t ints_disabled = 0;
-
-    if (!arch_ints_disabled()) {
-        arch_disable_ints();
-        ints_disabled = 1;
-    }
-
-    trigger_soft_intr_50 = 1;
-    __asm__ __volatile__ ("int $50");
-    trigger_soft_intr_50 = 0;
-
-    if (ints_disabled) {
-        arch_enable_ints();
-        ints_disabled = 0;
-    }
+    trigger_pending_intr_50 = 1;
+    make_set_pending_intr_self_vmcall(INT_DYNC_TIMER);
 
     return;
 }

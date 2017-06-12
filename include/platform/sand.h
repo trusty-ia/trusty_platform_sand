@@ -40,7 +40,7 @@ typedef struct _trusty_startup_info{
 extern trusty_startup_info_t g_trusty_startup_info;
 extern trusty_device_info_t* g_dev_info;
 
-extern volatile uint32_t trigger_soft_intr_50;
+extern volatile uint32_t trigger_pending_intr_50;
 extern uint64_t timer_delta_time;
 extern int32_t is_lk_boot_complete;
 

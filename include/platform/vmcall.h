@@ -19,6 +19,7 @@
 #include <lib/sm.h>
 
 void make_smc_vmcall(smc32_args_t *args, long ret);
-void make_schedule_vmcall();
+void make_schedule_vmcall(void);
+void make_set_pending_intr_self_vmcall(uint8_t vector);
 
 #endif
