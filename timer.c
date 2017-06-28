@@ -19,14 +19,11 @@
 #include <platform/interrupts.h>
 #include <platform/timer.h>
 #include <platform/sand.h>
-#include <arch/ops.h>
-#include <arch/x86.h>
 #include <kernel/vm.h>
-#include <platform/vmcall.h>
+#include <arch/x86.h>
 
 static volatile uint64_t timer_current_time; /* in ms */
-uint64_t timer_delta_time; /* in ms */
-volatile uint32_t trigger_pending_intr_50 = 0;
+static uint64_t timer_delta_time; /* in ms */
 
 static platform_timer_callback t_callback;
 static void *callback_arg;
@@ -64,14 +61,6 @@ lk_bigtime_t current_time_hires(void)
 }
 
 #if PLATFORM_HAS_DYNAMIC_TIMER
-void platform_trigger_soft_timer_intr(void)
-{
-    trigger_pending_intr_50 = 1;
-    make_set_pending_intr_self_vmcall(INT_DYNC_TIMER);
-
-    return;
-}
-
 status_t platform_set_oneshot_timer(platform_timer_callback callback,
         void *arg, lk_time_t interval)
 {
@@ -80,11 +69,8 @@ status_t platform_set_oneshot_timer(platform_timer_callback callback,
     timer_delta_time = interval;
 
     if(0 != is_lk_boot_complete) {
-        platform_trigger_soft_timer_intr();
+        //:TODO: set timer
     }
-
-    /* vmcall to set oneshot timer with interval (in ms) */
-    //make_timer_vmcall(TIMER_MODE_ONESHOT, interval);
 
     return NO_ERROR;
 }
@@ -92,9 +78,7 @@ status_t platform_set_oneshot_timer(platform_timer_callback callback,
 void platform_stop_timer(void)
 {
     if(0 != is_lk_boot_complete) {
-        timer_delta_time = TRUSTY_STOP_TIMER;
-
-        platform_trigger_soft_timer_intr();
+        //:TODO: stop timer
     }
     return;
 }

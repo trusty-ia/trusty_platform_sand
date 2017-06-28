@@ -19,29 +19,19 @@
 
 #define TRUSTY_VMCALL_SMC               0x74727500 /* "tru" is 0x747275 */
 #define TRUSTY_VMCALL_RESCHEDULE        0x74727501 /* "tru" is 0x747275 */
-#define TRUSTY_VMCALL_PENDING_INTR_SELF 0x74727509 /* "tru" is 0x747275 */
 #ifdef EPT_DEBUG
 #define VMCALL_EPT_UPDATE        0x65707501
 #endif
 
 void make_smc_vmcall(smc32_args_t *args, long ret)
 {
-    args->params[0] = timer_delta_time;
-
     __asm__ __volatile__(
-        "pushq %%rbx;" /* save the rbx */
-        "mov %3, %%ebx;"
         "vmcall;"
-        "mov %%ebx, %3;"
-        "popq %%rbx;" /* restore the old rbx */
-
         :"=D"(args->smc_nr), "=S"(args->params[0]),
-        "=d"(args->params[1]), "=r"(args->params[2])
+        "=d"(args->params[1]), "=b"(args->params[2])
         :"a"(TRUSTY_VMCALL_SMC), "D"(ret), "S"(args->params[0]),
-        "d"(args->params[1]), "r"(args->params[2])
+        "d"(args->params[1]), "b"(args->params[2])
     );
-
-    timer_delta_time = 0;
 }
 
 void make_vmcall(uint32_t vmcall_id)
@@ -52,15 +42,6 @@ void make_vmcall(uint32_t vmcall_id)
 void make_schedule_vmcall(void)
 {
     make_vmcall(TRUSTY_VMCALL_RESCHEDULE);
-}
-
-void make_set_pending_intr_self_vmcall(uint8_t vector)
-{
-    __asm__ __volatile__ (
-        "vmcall"
-        :
-        :"a"(TRUSTY_VMCALL_PENDING_INTR_SELF), "b"(vector)
-    );
 }
 
 #ifdef EPT_DEBUG

@@ -106,30 +106,16 @@ enum handler_return platform_irq(x86_iframe_t *frame)
     /* deliver the interrupt */
     enum handler_return ret = INT_NO_RESCHEDULE;
 
-    switch (vector) {
-        case INT_DYNC_TIMER:
-            if (!trigger_pending_intr_50) {
-                set_pending_intr_to_ns(vector);
-                ret = sm_handle_irq();
-            } else {
-                sm_handle_irq();
-                trigger_pending_intr_50 = 0;
-            }
-            break;
-
-        default:
-            if (int_handler_table[vector].handler) {
-                ret = int_handler_table[vector].
-                    handler(int_handler_table[vector].arg);
-            } else {
-                set_pending_intr_to_ns(vector);
-                /*
-                 * CAUTION: smc to non-secure world, and will not
-                 * return unless Android call smc to secure world
-                 */
-                ret = sm_handle_irq();
-            }
-            break;
+    if (int_handler_table[vector].handler) {
+        ret = int_handler_table[vector].
+        handler(int_handler_table[vector].arg);
+    } else {
+        set_pending_intr_to_ns(vector);
+        /*
+         * CAUTION: smc to non-secure world, and will not
+         * return unless Android call smc to secure world
+         */
+        ret = sm_handle_irq();
     }
 
     /*
