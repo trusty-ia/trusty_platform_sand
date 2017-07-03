@@ -18,6 +18,7 @@ MODULE_DEPS += \
 	lib/cbuf \
 	lib/lwip \
 
+WITH_SM_WALL=1
 GLOBAL_DEFINES += \
 	    PLATFORM_HAS_DYNAMIC_TIMER=1
 
