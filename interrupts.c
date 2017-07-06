@@ -80,7 +80,7 @@ extern enum handler_return sm_handle_irq(void);
 
 #define TRUSTY_VMCALL_PENDING_INTR 0x74727505 /* "tru" is 0x747275 */
 
-static inline void set_pending_intr_to_ns(uint8_t vector)
+static inline void set_pending_intr_to_ns(unsigned int vector)
 {
     if (vector > INT_VECTORS) {
         dprintf(CRITICAL, "error: internal failure in LK\n");
