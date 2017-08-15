@@ -44,7 +44,7 @@ extern void init_uart(void);
 
 trusty_startup_info_t g_trusty_startup_info __ALIGNED(8);
 uint8_t g_dev_info_buf[PAGE_SIZE] __ALIGNED(8);
-trusty_device_info_t* g_dev_info = g_dev_info_buf;
+trusty_device_info_t *g_dev_info = (trusty_device_info_t *)g_dev_info_buf;
 uintptr_t real_run_addr;
 
 #ifdef WITH_KERNEL_VM
@@ -68,7 +68,7 @@ static pmm_arena_t heap_arena = {
     .flags = PMM_ARENA_FLAG_KMAP
 };
 
-static void heap_arena_init()
+static void heap_arena_init(void)
 {
     heap_arena.base = PAGE_ALIGN(mmu_initial_mappings[0].phys);
     heap_arena.size = PAGE_ALIGN(mmu_initial_mappings[0].size);
@@ -79,12 +79,12 @@ void platform_init_mmu_mappings(void)
 {
     struct map_range range;
     arch_flags_t access;
-    map_addr_t pml4_table = paddr_to_kvaddr(get_kernel_cr3());
+    map_addr_t pml4_table = (map_addr_t)paddr_to_kvaddr(get_kernel_cr3());
 
     /* kernel code section mapping */
     access = ARCH_MMU_FLAG_PERM_RO;
     range.start_vaddr = (map_addr_t) & __code_start;
-    range.start_paddr = vaddr_to_paddr((map_addr_t) & __code_start);
+    range.start_paddr = (uint64_t)vaddr_to_paddr((void *) & __code_start);
     range.size =
         ((map_addr_t) & __code_end) - ((map_addr_t) & __code_start);
     x86_mmu_map_range(pml4_table, &range, access);
@@ -95,7 +95,7 @@ void platform_init_mmu_mappings(void)
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
     range.start_vaddr = (map_addr_t) & __data_start;
-    range.start_paddr = vaddr_to_paddr((map_addr_t) & __data_start);
+    range.start_paddr = (uint64_t)vaddr_to_paddr((void *) & __data_start);
     range.size =
         ((map_addr_t) & __data_end) - ((map_addr_t) & __data_start);
     x86_mmu_map_range(pml4_table, &range, access);
@@ -106,7 +106,7 @@ void platform_init_mmu_mappings(void)
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
     range.start_vaddr = (map_addr_t) & __rodata_start;
-    range.start_paddr = vaddr_to_paddr((map_addr_t) & __rodata_start);
+    range.start_paddr = (uint64_t)vaddr_to_paddr((void *) & __rodata_start);
     range.size =
         ((map_addr_t) & __rodata_end) - ((map_addr_t) & __rodata_start);
     x86_mmu_map_range(pml4_table, &range, access);
@@ -117,7 +117,7 @@ void platform_init_mmu_mappings(void)
     access |= ARCH_MMU_FLAG_PERM_NO_EXECUTE;
 #endif
     range.start_vaddr =  (map_addr_t) & __bss_start;
-    range.start_paddr = vaddr_to_paddr((map_addr_t) & __bss_start);
+    range.start_paddr = (uint64_t)vaddr_to_paddr((void *) & __bss_start);
     range.size = ((map_addr_t) &__bss_end) - ((map_addr_t) & __bss_start);
     x86_mmu_map_range(pml4_table, &range, access);
 
@@ -125,13 +125,13 @@ void platform_init_mmu_mappings(void)
     access = ARCH_MMU_FLAG_PERM_NO_EXECUTE;
     range.start_vaddr = (map_addr_t)paddr_to_kvaddr(mmu_initial_mappings[0].phys);
     range.start_paddr = mmu_initial_mappings[0].phys;
-    range.size = vaddr_to_paddr((map_addr_t)&_start) - mmu_initial_mappings[0].phys;
+    range.size = vaddr_to_paddr((void *)&_start) - mmu_initial_mappings[0].phys;
     x86_mmu_map_range(pml4_table, &range, access | ARCH_MMU_FLAG_NS);
 
     /* Mapping upper boundary to target maxium memory size */
-    map_addr_t va = &_end;
+    map_addr_t va = (map_addr_t)&_end;
     range.start_vaddr = (map_addr_t)PAGE_ALIGN(va);
-    range.start_paddr = vaddr_to_paddr((map_addr_t)PAGE_ALIGN(va));
+    range.start_paddr = (uint64_t)vaddr_to_paddr((void *)PAGE_ALIGN(va));
     range.size = ((map_addr_t)(mmu_initial_mappings[0].phys + mmu_initial_mappings[0].size) - range.start_paddr);
     x86_mmu_map_range(pml4_table, &range, access | ARCH_MMU_FLAG_NS);
 
@@ -159,7 +159,7 @@ void clear_sensitive_data(void)
 static void platform_heap_init(void)
 {
     mmu_initial_mappings[0].phys = g_trusty_startup_info.trusty_mem_base;
-    mmu_initial_mappings[0].virt = &_start;
+    mmu_initial_mappings[0].virt = (vaddr_t)&_start;
     mmu_initial_mappings[0].virt -= (real_run_addr - g_trusty_startup_info.trusty_mem_base);
 }
 

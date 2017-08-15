@@ -34,7 +34,7 @@ static mutex_t uart_lock = MUTEX_INITIAL_VALUE(uart_lock);
 
 
 
-extern having_print_cb;
+extern int having_print_cb;
 uint8_t (*io_get_reg)(uint64_t base_addr, uint32_t reg_id);
 void (*io_set_reg)(uint64_t base_addr, uint32_t reg_id, uint8_t val);
 
@@ -157,7 +157,7 @@ void init_uart(void)
 
     io_base = (uint64_t)(pci_read32(0, 24, 2, 0x10) & ~0xF);
     ret = vmm_alloc_physical(vmm_get_kernel_aspace(), "uart", 4096,
-        &mmio_base_addr, PAGE_SIZE_SHIFT, io_base, 0, ARCH_MMU_FLAG_UNCACHED_DEVICE);
+        (void **)&mmio_base_addr, PAGE_SIZE_SHIFT, io_base, 0, ARCH_MMU_FLAG_UNCACHED_DEVICE);
 
     if (ret) {
         dprintf(CRITICAL, "%s: failed %d\n", __func__, ret);
