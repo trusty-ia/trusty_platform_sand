@@ -21,6 +21,9 @@
 #include <kernel/vm.h>
 #include <platform/sand.h>
 #include <platform/vmcall.h>
+#ifdef SPI_CONTROLLER
+#include <platform/lpss_spi.h>
+#endif
 
 #define GET_STEPPING_ID(val)    ((val) & 0xF)
 #define GET_MODEL(val)          (((val) >> 4) & 0xF)
@@ -335,4 +338,7 @@ void platform_init(void)
     x86_mp_init(g_trusty_startup_info.sipi_ap_wkup_addr);
 #endif
     platform_update_pagetable();
+#ifdef SPI_CONTROLLER
+    spi_mmu_init();
+#endif
 }
