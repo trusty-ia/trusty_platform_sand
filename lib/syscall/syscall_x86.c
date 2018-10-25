@@ -21,7 +21,9 @@
 #include <kernel/mutex.h>
 #include <platform/sand.h>
 #include <uapi/err.h>
-
+#ifdef SPI_CONTROLLER
+#include <platform/spi.h>
+#endif
 #define GET_NONE           0
 #define GET_BASIC_INFO     (1<<0)  /* For example: platform, num_seeds */
 #define GET_SEED           (1<<1)
@@ -199,3 +201,103 @@ long sys_get_device_info(user_addr_t info)
 	return NO_ERROR;
 }
 
+#ifdef SPI_CONTROLLER
+//system call for fingerprint
+void sys_trusty_spi_init(void)
+{
+	spi_init();
+	return;
+}
+
+void sys_trusty_spi_set_cs(bool flag)
+{
+	spi_set_cs(flag);
+	return;
+}
+
+int sys_trusty_spi_read(user_addr_t rx_buff, uint32_t rx_bytes)
+{
+	int ret;
+	uint8_t *buf = malloc(rx_bytes);
+
+	if (!buf) {
+		ret = ERR_NO_MEMORY;
+		goto end;
+	}
+
+	ret = spi_read(buf, rx_bytes);
+	if (ret != NO_ERROR)
+		goto end;
+
+	ret = copy_to_user(rx_buff, buf, rx_bytes);
+	if (ret != NO_ERROR)
+		dprintf(CRITICAL, "failed (%d) to copy structure to user\n", ret);
+end:
+	if(buf)
+		free(buf);
+	return ret;
+}
+
+long sys_trusty_spi_write(user_addr_t tx_buff, uint32_t tx_bytes)
+{
+	int ret;
+	uint8_t *buf = malloc(tx_bytes);
+
+	if (!buf) {
+		ret = ERR_NO_MEMORY;
+		goto end;
+	}
+
+	ret = copy_from_user(buf, tx_buff, tx_bytes);
+	if (ret != NO_ERROR)
+		dprintf(CRITICAL, "failed (%d) to copy structure from user\n", ret);
+
+	ret = spi_write(buf, tx_bytes);
+	if (ret != NO_ERROR)
+		goto end;
+
+end:
+	if(buf)
+		free(buf);
+	return ret;
+
+}
+
+long sys_trusty_spi_writeread(user_addr_t tx_buff, uint32_t tx_bytes,
+	user_addr_t rx_buff, uint32_t rx_bytes)
+{
+	int ret;
+	uint8_t *krx_buf = NULL, *ktx_buf = NULL;
+	uint32_t total_length = tx_bytes + rx_bytes;
+
+	krx_buf = malloc(total_length);
+	if (!krx_buf) {
+		ret = ERR_NO_MEMORY;
+		goto end;
+	}
+	ktx_buf = malloc(total_length);
+	if (!ktx_buf) {
+		ret = ERR_NO_MEMORY;
+		goto end;
+	}
+
+	ret = copy_from_user(ktx_buf, tx_buff, tx_bytes);
+	if (ret != NO_ERROR)
+		dprintf(CRITICAL, "failed (%d) to copy structure from user\n", ret);
+
+	ret = spi_writeread(ktx_buf, tx_bytes, krx_buf, rx_bytes);
+	if (ret != NO_ERROR)
+		goto end;
+
+	ret = copy_to_user(rx_buff + tx_bytes, krx_buf + tx_bytes, rx_bytes);
+	if (ret != NO_ERROR)
+		dprintf(CRITICAL, "failed (%d) to copy structure to user\n", ret);
+
+end:
+	if(ktx_buf)
+		free(ktx_buf);
+	if(krx_buf)
+		free(krx_buf);
+	return ret;
+}
+#endif

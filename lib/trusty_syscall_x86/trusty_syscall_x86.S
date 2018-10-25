@@ -45,3 +45,45 @@ FUNCTION(get_device_info)
     sysenter
     EPILOG
     ret
+
+#ifdef SPI_CONTROLLER
+FUNCTION(trusty_spi_init)
+    PROLOG
+    movq $__NR_trusty_spi_init, %rax
+    MOV_PARAMS
+    sysenter
+    EPILOG
+    ret
+
+FUNCTION(trusty_spi_set_cs)
+    PROLOG
+    movq $__NR_trusty_spi_set_cs, %rax
+    MOV_PARAMS
+    sysenter
+    EPILOG
+    ret
+
+FUNCTION(trusty_spi_read)
+    PROLOG
+    movq $__NR_trusty_spi_read, %rax
+    MOV_PARAMS
+    sysenter
+    EPILOG
+    ret
+
+FUNCTION(trusty_spi_write)
+    PROLOG
+    movq $__NR_trusty_spi_write, %rax
+    MOV_PARAMS
+    sysenter
+    EPILOG
+    ret
+
+FUNCTION(trusty_spi_writeread)
+    PROLOG
+    movq $__NR_trusty_spi_writeread, %rax
+    MOV_PARAMS
+    sysenter
+    EPILOG
+    ret
+#endif

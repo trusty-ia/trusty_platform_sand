@@ -52,8 +52,13 @@ MODULE_SRCS += \
 	$(LOCAL_DIR)/lib/pci/pci_config.c \
 	$(LOCAL_DIR)/lib/syscall/syscall_x86.c \
 	$(LOCAL_DIR)/lib/smc/smc_x86.c \
-	$(LOCAL_DIR)/utilities.c \
+	$(LOCAL_DIR)/utilities.c
 
+ifeq ($(filter SPI_CONTROLLER, $(GLOBAL_DEFINES)), SPI_CONTROLLER)
+MODULE_SRCS += \
+	$(LOCAL_DIR)/lib/spi/spi_reg_access.c \
+	$(LOCAL_DIR)/lib/spi/spi.c
+endif
 
 ifeq ($(ATTKB_HECI), 1)
 MODULE_SRCS += \

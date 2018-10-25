@@ -16,3 +16,10 @@
 
 
 DEF_SYSCALL(0xa0, get_device_info, long, 1, trusty_device_info_t *info)
+#ifdef SPI_CONTROLLER
+DEF_SYSCALL(0xa1, trusty_spi_init, void, 0)
+DEF_SYSCALL(0xa2, trusty_spi_set_cs, void, 1, uint8_t flag)
+DEF_SYSCALL(0xa3, trusty_spi_read, int, 2, uint8_t *rx_buff, uint32_t rx_bytes)
+DEF_SYSCALL(0xa4, trusty_spi_write, int, 2, uint8_t *tx_buff, uint32_t tx_bytes)
+DEF_SYSCALL(0xa5, trusty_spi_writeread, int, 4, uint8_t *tx_buff, uint32_t tx_bytes, uint8_t *rx_buff, uint32_t rx_bytes)
+#endif
