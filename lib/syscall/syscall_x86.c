@@ -141,7 +141,7 @@ long sys_get_device_info(user_addr_t info)
 
 	/* memcpy may result to klocwork scan error, so size is checked before memcpy is called. */
 	ret = memcpy_s(dev_info, sizeof(device_sec_info_t), g_sec_info, g_sec_info->size_of_this_struct);
-	if (ret != NO_ERROR){
+	if (ret != NO_ERROR) {
 		dprintf(INFO, "failed to memcopy dev_info!\n");
 		free(dev_info);
 		return ERR_GENERIC;
@@ -171,6 +171,10 @@ long sys_get_device_info(user_addr_t info)
 #else
 		dev_info->attkb_size = 0;
 #endif
+	}
+	else {
+		memset(dev_info->sec_info.attkb_enc_key, 0,
+			sizeof(dev_info->sec_info.attkb_enc_key));
 	}
 
 	ret = copy_to_user(info, dev_info, sizeof(trusty_device_info_t));
