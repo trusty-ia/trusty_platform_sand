@@ -104,6 +104,42 @@ typedef struct {
 	uint8_t                attkb[0];
 } trusty_device_info_t;
 
+#define TRUSTY_ENC_IV_SIZE    12
+#define TRUSTY_ENC_TAG_SIZE   16
+#define TRUSTY_ENC_FORMAT_VER 1
+
+#pragma pack (1)
+typedef struct
+{
+	uint8_t version;           // version 1 supports plan and LZMA
+	uint16_t size;             // decompressed size excluding this header
+	struct
+	{
+		uint8_t compressed : 1;//0- uncompressed 1- LZMA
+		uint8_t encrypted  : 1;
+		uint8_t reserved   : 6;
+	} format;
+	uint8_t flags;//not used
+	uint16_t reserved;//not used
+} attkb_header_t;
+
+typedef struct
+{
+	uint16_t      format_ver;//1 for now
+	uint16_t      enc_blob_size;
+	uint8_t       IV[TRUSTY_ENC_IV_SIZE];
+	uint8_t       tag[TRUSTY_ENC_TAG_SIZE];
+	uint8_t       enc_blob[0];
+} trusty_encrypted_blob_t;
+
+typedef struct
+{
+	attkb_header_t attkb_hdr;
+	trusty_encrypted_blob_t encryption_blob;
+} trusty_enc_attkb_t;
+
+#pragma pack ()
+
 #define DUMMY_PLATFORM     0
 #define APL_PLATFORM       1
 #define ICL_PLATFORM       2

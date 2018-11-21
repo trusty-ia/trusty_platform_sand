@@ -415,6 +415,7 @@ uint32_t get_attkb(uint8_t *attkb)
     Req->DstAddrLower = (uint32_t)pa;
     Req->DstAddrUpper = (uint32_t)(pa >> 32);
     Req->Size = MAX_ATTKB_SIZE;
+    Req->Flags.Encrypt = 0;
 
     HeciSendLength = sizeof(MCA_BOOTLOADER_READ_ATTKB_REQ_DATA);
     HeciRecvLength = sizeof(DataBuffer);

@@ -60,7 +60,11 @@ typedef struct
     uint32_t             Size;
     uint32_t             DstAddrLower;
     uint32_t             DstAddrUpper;
-    uint32_t             Flags;
+    struct
+    {
+      uint32_t Encrypt  : 1;
+      uint32_t Reserved : 31;
+    } Flags;
 } MCA_BOOTLOADER_READ_ATTKB_REQ_DATA;
 
 typedef struct
