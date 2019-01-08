@@ -104,39 +104,45 @@ typedef struct {
 	uint8_t                attkb[0];
 } trusty_device_info_t;
 
-#define TRUSTY_ENC_IV_SIZE    12
-#define TRUSTY_ENC_TAG_SIZE   16
-#define TRUSTY_ENC_FORMAT_VER 1
+enum ATT_KEYBOX_FORMAT
+{
+	ATT_KEYBOX_FORMAT_PLAIN = 0x00,
+	ATT_KEYBOX_FORMAT_LZMA  = 0x01,
+};
+
+#define CIPHER_IV_SIZE        12
+#define CIPHER_TAG_SIZE       16
+#define ATT_KEYBOX_VERSION    1
 
 #pragma pack (1)
 typedef struct
 {
-	uint8_t version;           // version 1 supports plan and LZMA
-	uint16_t size;             // decompressed size excluding this header
+	uint8_t  version; // version 1 supports plain and LZMA
+	uint16_t size;   // decompressed size excluding this header
 	struct
 	{
-		uint8_t compressed : 1;//0- uncompressed 1- LZMA
+		uint8_t compressed : 1; //0- uncompressed 1- LZMA
 		uint8_t encrypted  : 1;
 		uint8_t reserved   : 6;
 	} format;
-	uint8_t flags;//not used
-	uint16_t reserved;//not used
+	uint8_t flag; //not used yet
+	uint16_t reserved; //not used yet
 } attkb_header_t;
 
 typedef struct
 {
-	uint16_t      format_ver;//1 for now
-	uint16_t      enc_blob_size;
-	uint8_t       IV[TRUSTY_ENC_IV_SIZE];
-	uint8_t       tag[TRUSTY_ENC_TAG_SIZE];
-	uint8_t       enc_blob[0];
-} trusty_encrypted_blob_t;
+	uint16_t      format_version; //1 for now
+	uint16_t      cipher_blob_size;
+	uint8_t       iv[CIPHER_IV_SIZE];
+	uint8_t       tag[CIPHER_TAG_SIZE];
+	uint8_t       cipher_blob[0];
+} trusty_cipher_blob_t;
 
 typedef struct
 {
-	attkb_header_t attkb_hdr;
-	trusty_encrypted_blob_t encryption_blob;
-} trusty_enc_attkb_t;
+	attkb_header_t attkb_header;
+	trusty_cipher_blob_t trusty_cipher_blob;
+} trusty_encrypted_attkb_t;
 
 #pragma pack ()
 

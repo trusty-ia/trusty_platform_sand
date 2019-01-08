@@ -33,12 +33,17 @@
 #define TLOGE(fmt, ...) \
     fprintf(stderr, "%s: %d: " fmt, LOG_TAG, __LINE__,  ## __VA_ARGS__)
 
-static void * (* const volatile memset_ptr)(void *, int, size_t) = memset;
-
-static void secure_memzero(void * p, size_t len)
-{
-    (memset_ptr)(p, 0, len);
+#ifdef __clang__
+#define OPTNONE __attribute__((optnone))
+#else  // not __clang__
+#define OPTNONE __attribute__((optimize("O0")))
+#endif  // not __clang__
+inline OPTNONE void* secure_memzero(void* s, size_t n) {
+    if (!s)
+        return s;
+    return memset(s, 0, n);
 }
+#undef OPTNONE
 
 /**
  * aes_256_gcm_encrypt - Helper function for encrypt.
