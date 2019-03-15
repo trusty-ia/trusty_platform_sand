@@ -212,7 +212,7 @@ int aes_256_gcm_decrypt(const struct gcm_key *key,
 
 	/* set to aad info.*/
 	if (NULL != aad) {
-		if (!EVP_EncryptUpdate(ctx, NULL, &out_len, (uint8_t *)aad, aad_size)) {
+		if (!EVP_DecryptUpdate(ctx, NULL, &out_len, (uint8_t *)aad, aad_size)) {
 			TLOGE("set aad info fail\n");
 			goto exit;
 		}
