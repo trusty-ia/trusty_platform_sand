@@ -27,12 +27,18 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 
-#include "trusty_key_migration.h"
 #include "trusty_key_crypt.h"
 
 #define LOG_TAG "libhwkey_crypt"
 #define TLOGE(fmt, ...) \
     fprintf(stderr, "%s: %d: " fmt, LOG_TAG, __LINE__,  ## __VA_ARGS__)
+
+static void * (* const volatile memset_ptr)(void *, int, size_t) = memset;
+
+static void secure_memzero(void * p, size_t len)
+{
+    (memset_ptr)(p, 0, len);
+}
 
 /**
  * aes_256_gcm_encrypt - Helper function for encrypt.
