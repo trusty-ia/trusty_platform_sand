@@ -23,6 +23,7 @@
 #include <platform/interrupts.h>
 #include <platform/sand.h>
 #include <lk/init.h>
+#include <debug.h>
 
 static spin_lock_t lock;
 
@@ -109,6 +110,17 @@ enum handler_return platform_irq(x86_iframe_t *frame)
 
     /* deliver the interrupt */
     enum handler_return ret = INT_NO_RESCHEDULE;
+
+   /*
+    * We need to support diverse bootloaders, bootloader might remap PIC
+    * to different vector. To avoid LK interrupted during LK boot stage,
+    * drop these external interrupts directly.
+    */
+    if (!is_lk_boot_complete()) {
+        dprintf(SPEW, "Unexpected intr:%x during LK boot stage\n", vector);
+        lapic_eoi();
+        return ret;
+    }
 
     /* EOI should be issued by ISR */
     if (int_handler_table[vector].handler) {
