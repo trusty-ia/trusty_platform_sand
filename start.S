@@ -43,151 +43,9 @@
 #define PTRS_MASK        (512 - 1)
 
 .section ".text.boot"
-.code32
-
-/* Map 0 (VA) to 0 (PA), with 4G size. */
-.macro map_low_4G
-    /* Setting the First PML4E with a PDP table reference*/
-    leal PHYS(pdpt_tmp)(%ebp), %eax
-    leal PHYS(pml4_tmp)(%ebp), %edx
-    orl  $X86_KERNEL_PD_FLAGS, %eax
-    movl %eax, (%edx)
-
-    /* Detect 1G leaf support */
-    movl $0x80000001, %eax
-    cpuid
-    bts $26, %edx
-    jnc .leaf_2M
-
-.leaf_1G:
-    leal PHYS(pdpt_tmp)(%ebp), %eax
-    movl $0x00000083, 0x00(%eax)
-    movl $0x40000083, 0x08(%eax)
-    movl $0x80000083, 0x10(%eax)
-    movl $0xC0000083, 0x18(%eax)
-    jmp .tmp_mapping_end
-
-.leaf_2M:
-    /* Setting the First PDPTE with a Page table reference*/
-    /* 0 - 4G  */
-    leal PHYS(pd_tmp)(%ebp), %eax
-    leal PHYS(pdpt_tmp)(%ebp), %edx
-    orl  $X86_KERNEL_PD_FLAGS, %eax
-    movl $4, %ecx
-0:
-    movl %eax, (%edx)
-    addl $0x8, %edx
-    addl $0x1000, %eax
-    loop 0b
-
-    /* Map first 4GB in this table */
-    leal PHYS(pd_tmp)(%ebp), %esi
-    movl $0x800, %ecx
-    xorl %eax, %eax
-
-0:
-    movl %eax, %ebx
-    shll $21, %ebx
-    orl  $X86_KERNEL_PD_LP_FLAGS, %ebx
-    movl %ebx, (%esi)
-    addl $8,%esi
-    incl %eax
-    loop 0b
-.tmp_mapping_end:
-.endm
-
-.global _start
-_start:
-
-.align 8
-
-    /* Get the offset between compiled entry address and */
-    /* actually entry address in ebp register temporary */
-    call 1f
-1:
-    popl %ebp
-    subl $PHYS(1b), %ebp
-
-    /* Update and load our new gdt by physical pointer */
-    lea  PHYS(_gdtr_phys)(%ebp), %eax
-    lea  PHYS(_gdt)(%ebp), %edx
-    movl %edx, 2(%eax)
-    lgdt (%eax)
-
-    /* Load our data selectors */
-    movw $DATA_SELECTOR, %ax
-    movw %ax, %ds
-    movw %ax, %es
-    movw %ax, %fs
-    movw %ax, %ss
-    movw %ax, %gs
-    movw %ax, %ss
-
-    /* Load initial stack pointer */
-    lea PHYS(_kstack + 4096)(%ebp), %esp
-
-    /* We need to jump to our sane 32 bit CS */
-    pushl $CODE_SELECTOR
-    lea   PHYS(.Lfarjump)(%ebp), %eax
-    pushl %eax
-    retf
-
-.Lfarjump:
-    /* Save pointer of trusty startup info */
-    pushl %edi
-
-    /* PAE bit must be enabled  for 64 bit paging*/
-    mov  %cr4, %eax
-    btsl $(5), %eax
-    mov  %eax, %cr4
-
-    /* Use temporary pml4_tmp for 4G mapping */
-    lea  PHYS(pml4_tmp)(%ebp), %eax
-    mov  %eax, %cr3
-
-    /* Long Mode Enabled at this point*/
-    movl $MSR_EFER, %ecx
-    rdmsr
-    orl  $EFER_LME, %eax
-    wrmsr
-
-    /* 4G for bootstrap and MMIO mapping */
-    map_low_4G
-
-    /* Enabling Paging */
-    mov %cr0,  %eax
-    btsl $(31), %eax
-    mov %eax,  %cr0
-
-    popl  %edi
-
-    /* Using another long jump to be on 64 bit mode */
-    pushl $CODE_64_SELECTOR
-    lea   PHYS(_startup_64)(%ebp), %eax
-    pushl %eax
-    retf
 
 .align 8
 .code64
-/* Trusty info must be stroed in RDI */
-.macro save_trusty_info
-    movq %rdi, %rax
-
-    /* Save g_trusty_startup_info in local */
-    movq %rdi, %rsi
-    leaq PHYS(g_trusty_startup_info)(%rbp), %rdi
-    movq $32, %rcx
-    shrq $3, %rcx
-    rep movsq
-
-    /* Clear previous g_trusty_startup_info */
-    movq $32, %rcx
-    shrq $3, %rcx
-0:
-    movq $0, (%rax)
-    addq $8, %rax
-    loop 0b
-.endm
 
 /* Map 0 (VA) to 0 (PA), with 512Gb size. */
 .macro map_low_512G
@@ -248,7 +106,12 @@ _start:
     loop 0b
 .endm
 
-/* Map KERNEL_BASE (VA) to trusty startup info.base (PA), with 16MB size. */
+/*
+ * Map KERNEL_BASE (VA) to actual runtime address (PA), with 16MB size.
+ * We are using 0 MEMBASE and KERNEL_LOAD_OFFSET, if you change either
+ * of these settings, please update offset of pde_kernel which would be
+ * filled with pte_kernel to adapt your changes.
+ */
 .macro  map_kernel_base_region
     /* Max memory -2G adress of VA */
     leaq pdp_high + 8*510(%rip), %rdi
@@ -267,7 +130,11 @@ _start:
     addq $4096, %rsi
     loop 0b
 
-    movq g_trusty_startup_info + 16(%rip), %rsi
+/*
+ * Start to fill pte with physical address.
+ * RBP contains actual physcial address where Trusty binary resides.
+ */
+    movq %rbp, %rsi
     leaq pte_kernel(%rip), %rdi
     movq $4096, %rcx
 0:
@@ -278,9 +145,8 @@ _start:
     loop 0b
 .endm
 
-
-.org 0x400
-_startup_64:
+.global _start
+_start:
     call 1f
 1:
     pop %rbp
@@ -295,8 +161,6 @@ _startup_64:
     movq $0, (%rax)
     add $4, %rax
     loop 2b
-
-    save_trusty_info
 
     /* Map 0 ~ 512G */
     map_low_512G
