@@ -23,25 +23,6 @@
 #include <platform/pci_config.h>
 #include "trusty_device_info.h"
 
-/* Please keep align with definition in iKGT trusty_guest.h*/
-typedef struct _trusty_startup_info{
-    /* Used to double check structures match */
-    uint32_t size_of_this_struct;
-
-    /* IMR size for LK */
-    uint32_t mem_size;
-
-    /* Used to calibrate TSC in LK */
-    uint64_t calibrate_tsc_per_ms;
-
-    /* Used by keymaster */
-    uint64_t trusty_mem_base;
-
-    uint32_t sipi_ap_wkup_addr;
-    uint8_t  padding[4];
-}trusty_startup_info_t;
-
-extern trusty_startup_info_t g_trusty_startup_info;
 extern device_sec_info_t* g_sec_info;
 
 void platform_init_interrupts(void);

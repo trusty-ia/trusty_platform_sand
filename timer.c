@@ -42,6 +42,8 @@ typedef struct bakcup_timer_t {
 backup_timer back_timer;
 #endif
 
+#define TSC_PER_MS 2200000
+
 static volatile uint64_t timer_current_time; /* in ms */
 static uint64_t timer_delta_time; /* in ms */
 
@@ -55,7 +57,7 @@ lk_time_t current_time(void)
 
     rdtsc(low, high);
     val = (uint64_t)((uint64_t)high <<32 | (uint64_t)low);
-    timer_current_time = val/(uint64_t)(g_trusty_startup_info.calibrate_tsc_per_ms);
+    timer_current_time = val / TSC_PER_MS;
 
     return timer_current_time;
 }

@@ -56,7 +56,6 @@ map_addr_t pte_kernel[NO_OF_PT_ENTRIES * 9] __ALIGNED(PAGE_SIZE);
 /* a big pile of page tables needed to map 512GB of memory into kernel space using 2MB pages */
 map_addr_t linear_map_pdp_512[(512ULL*GB) / (2*MB)] __ALIGNED(PAGE_SIZE);
 
-trusty_startup_info_t g_trusty_startup_info __ALIGNED(8);
 device_sec_info_t *g_sec_info = NULL;
 
 enum {
@@ -198,14 +197,9 @@ void platform_init_mmu_mappings(void)
 
 void clear_sensitive_data(void)
 {
-    if(g_trusty_startup_info.size_of_this_struct > 0) {
-        if(g_sec_info->size_of_this_struct > 0) {
-            memset(g_sec_info, 0, g_sec_info->size_of_this_struct);
-            vmm_free_region(vmm_get_kernel_aspace(), (vaddr_t)g_sec_info);
-        }
-
-        /* clear the g_trusty_startup_info */
-        memset(&g_trusty_startup_info, 0, sizeof(trusty_startup_info_t));
+    if(g_sec_info->size_of_this_struct > 0) {
+        memset(g_sec_info, 0, g_sec_info->size_of_this_struct);
+        vmm_free_region(vmm_get_kernel_aspace(), (vaddr_t)g_sec_info);
     }
 }
 
@@ -234,12 +228,12 @@ void smc_init(void)
 */
 static void platform_heap_init(void)
 {
-    mmu_initial_mappings[0].phys = g_trusty_startup_info.trusty_mem_base;
+    mmu_initial_mappings[0].phys = entry_phys;
     mmu_initial_mappings[0].virt = (vaddr_t)&_start;
-    mmu_initial_mappings[0].virt -= (entry_phys - g_trusty_startup_info.trusty_mem_base);
+    mmu_initial_mappings[0].virt -= KERNEL_LOAD_OFFSET;
 
-    mmu_initial_mappings[1].phys += g_trusty_startup_info.trusty_mem_base;
-    mmu_initial_mappings[1].virt += g_trusty_startup_info.trusty_mem_base;
+    mmu_initial_mappings[1].phys += entry_phys;
+    mmu_initial_mappings[1].virt += entry_phys;
 }
 
 void platform_early_init(void)
@@ -359,9 +353,6 @@ void platform_init(void)
     platform_init_mmu_mappings();
     x86_mmu_init();
 
-#if WITH_SMP
-    x86_mp_init(g_trusty_startup_info.sipi_ap_wkup_addr);
-#endif
     platform_update_pagetable();
 #ifdef SPI_CONTROLLER
     spi_mmu_init();
