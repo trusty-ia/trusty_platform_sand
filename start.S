@@ -187,22 +187,6 @@ _start:
     movq $0, (%rax)
     addq $8, %rax
     loop 0b
-
-    /* Save g_sec_info in local */
-    movq PHYS(g_trusty_startup_info + 16)(%rbp), %rsi
-    leaq PHYS(g_sec_info_buf)(%rbp), %rdi
-    movq $4096, %rcx
-    shrq $3, %rcx
-    rep movsq
-
-    /* Clear previous g_sec_info */
-    movq PHYS(g_trusty_startup_info + 16)(%rbp), %rax
-    movq $4096, %rcx
-    shrq $3, %rcx
-0:
-    movq $0, (%rax)
-    addq $8, %rax
-    loop 0b
 .endm
 
 /* Map 0 (VA) to 0 (PA), with 512Gb size. */

@@ -21,6 +21,8 @@
 #define EVMM_SMC_HC_ID                  0x74727500
 #define ACRN_SMC_HC_ID                  0x80000071
 
+#define EVMM_HC_SECINFO                 0x74727509
+
 #ifdef EPT_DEBUG
 #define EVMM_EPT_UPDATE_HC_ID           0x65707501
 #endif
@@ -54,6 +56,10 @@ void make_smc_vmcall_acrn(smc32_args_t *args, long ret)
         "d"(args->params[1]), "b"(args->params[2])
         :"rax"
     );
+}
+
+void make_get_secinfo_vmcall(void *dst) {
+    __asm__ __volatile__("vmcall" ::"a"(EVMM_HC_SECINFO), "D"(dst));
 }
 
 #ifdef EPT_DEBUG
