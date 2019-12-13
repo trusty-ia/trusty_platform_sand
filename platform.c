@@ -57,8 +57,7 @@ map_addr_t pte_kernel[NO_OF_PT_ENTRIES * 9] __ALIGNED(PAGE_SIZE);
 map_addr_t linear_map_pdp_512[(512ULL*GB) / (2*MB)] __ALIGNED(PAGE_SIZE);
 
 trusty_startup_info_t g_trusty_startup_info __ALIGNED(8);
-uint8_t g_sec_info_buf[PAGE_SIZE] __ALIGNED(8);
-device_sec_info_t *g_sec_info = (device_sec_info_t *)g_sec_info_buf;
+device_sec_info_t *g_sec_info = NULL;
 
 enum {
     VMM_ID_EVMM = 0,
@@ -200,8 +199,10 @@ void platform_init_mmu_mappings(void)
 void clear_sensitive_data(void)
 {
     if(g_trusty_startup_info.size_of_this_struct > 0) {
-        if(g_sec_info->size_of_this_struct > 0)
+        if(g_sec_info->size_of_this_struct > 0) {
             memset(g_sec_info, 0, g_sec_info->size_of_this_struct);
+            vmm_free_region(vmm_get_kernel_aspace(), (vaddr_t)g_sec_info);
+        }
 
         /* clear the g_trusty_startup_info */
         memset(&g_trusty_startup_info, 0, sizeof(trusty_startup_info_t));
@@ -318,10 +319,34 @@ static bool is_sysenter_support(void)
     return true;
 }
 
+static void prepare_secinfo_region(void)
+{
+    void *vaddr;
+    status_t err;
+
+    err = vmm_alloc(vmm_get_kernel_aspace(),
+                    "sec",
+                    sizeof(device_sec_info_t),
+                    &vaddr,
+                    PAGE_SIZE_SHIFT,
+                    0,
+                    ARCH_MMU_FLAG_PERM_NO_EXECUTE | ARCH_MMU_FLAG_UNCACHED);
+
+    if (err) {
+        panic("Failed to allocate memory for sec info, erro:%d!\n", err);
+        return;
+    }
+
+    make_get_secinfo_vmcall(vaddr);
+    g_sec_info = vaddr;
+}
+
 void platform_init(void)
 {
     /* MMU init for x86 Archs done after the heap is setup */
    // arch_mmu_init_percpu();
+
+    prepare_secinfo_region();
 
     smc_init();
 
